@@ -9,8 +9,8 @@ Design Doc for the class
 
 
 References:
-    [C Grammar][https://www2.cs.arizona.edu/~debray/Teaching/CSc453/DOCS/cminusminusspec.html]
-    [C11 Standard][https://www.open-std.org/jtc1/sc22/WG14/www/docs/n1570.pdf]
+    [C Grammar](https://www2.cs.arizona.edu/~debray/Teaching/CSc453/DOCS/cminusminusspec.html)
+    [C11 Standard](https://www.open-std.org/jtc1/sc22/WG14/www/docs/n1570.pdf)
 
 
 
