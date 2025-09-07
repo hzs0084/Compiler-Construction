@@ -50,3 +50,38 @@ List of tokens: identifier, operator, identifier, operator, identifier
 
 The job of the lexical analyzer is to find out the meaning of the every lexem, to recognize the token, we use RegExs
 
+Lexical Analyzer:
+    Scans the pure HLL code line by line.
+    Takes lexemes as inputs and produces tokens.
+    Removes comments and whitespaces from the pure hll code.
+
+Tokens are made up of:
+    Keywords
+    Identifier
+    Punctuators
+    Operators
+    Constants
+    Literals
+    Special characters
+
+
+An example program and it's tokens
+
+int main()
+{
+    int x, a = 2, b = 3, c = 5;
+    x = a + b * c;
+    printf("The value of x is %d", x);
+    return 0;
+}
+
+Tokens:
+    Keywords: int, return
+    Identifier: main, x, a, b, c, printf
+    Punctuators: {, ",", }, ( , ), ;
+    Operators: +, *
+    Constants: 2, 3, 5, 0
+    Literals: "The value of x is %d"
+
+    Count = 39
+
