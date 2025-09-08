@@ -8,3 +8,12 @@ lexer.py - This is my tokenizer
 errors.py - tracking and throwing errors that were caused and handle errors in the compiler.
 
 tests.py - testing my compiler
+
+
+Tokens:
+    Keywords: int, return, if, else, while, for, char, void
+    Identifiers:
+    Integer Literals:
+    Punctuators: [ ] ( ) { } . & * + - ~ ! / % < > ^ | ? : ; = , #
+    Whitespace: [ \t\r\n]+
+    Comments: //[^\n]* and /\*.*?\*/
