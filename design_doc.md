@@ -15,5 +15,9 @@ Tokens:
     Identifiers:
     Integer Literals:
     Punctuators: [ ] ( ) { } . & * + - ~ ! / % < > ^ | ? : ; = , #
-    Whitespace: [ \t\r\n]+
     Comments: //[^\n]* and /\*.*?\*/
+
+
+[Regex](https://regexone.com/)
+
+
