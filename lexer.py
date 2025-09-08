@@ -30,13 +30,13 @@ def lex(program_text: str, filename: str, errors: ErrorReporter) -> List[Token]:
     line_num = 1
     line_start = 0  # index of start of current line
 
-    mo = MASTER.match(program_text)
-    while mo is not None:
-        kind = mo.lastgroup
-        value = mo.group(kind)
+    match_object = MASTER.match(program_text)
+    while match_object is not None:
+        kind = match_object.lastgroup
+        value = match_object.group(kind)
 
         if kind == "NEWLINE":
-            line_start = mo.end()
+            line_start = match_object.end()
             line_num += 1
 
         elif kind == "SKIP" or kind == "SINGLE_LINE_COMMENT" or kind == "MULTI_LINE_COMMENT":
@@ -46,28 +46,28 @@ def lex(program_text: str, filename: str, errors: ErrorReporter) -> List[Token]:
         elif kind == "ID":
             
             token_kind = TokenType.KEYWORD if value in KEYWORDS else TokenType.IDENT
-            col = (mo.start() - line_start) + 1
+            col = (match_object.start() - line_start) + 1
             tokens.append(Token(token_kind, value, line_num, col))
 
         elif kind == "INT":
-            col = (mo.start() - line_start) + 1
+            col = (match_object.start() - line_start) + 1
             tokens.append(Token(TokenType.INT_LITERAL, value, line_num, col))
 
         elif kind == "STRING":
-            col = (mo.start() - line_start) + 1
+            col = (match_object.start() - line_start) + 1
             tokens.append(Token(TokenType.STRING_LITERAL, value, line_num, col))
 
         elif kind == "PUNCT":
-            col = (mo.start() - line_start) + 1
+            col = (match_object.start() - line_start) + 1
             tokens.append(Token(TokenType.PUNCT, value, line_num, col))
 
         elif kind == "MISMATCH":
-            col = (mo.start() - line_start) + 1
+            col = (match_object.start() - line_start) + 1
             
             errors.report(filename, line_num, col, f"unexpected character {value!r}")
 
         # Advance to the next token
-        mo = MASTER.match(program_text, mo.end())
+        match_object = MASTER.match(program_text, match_object.end())
 
     # EOF token
     # Column is 1 + index into current line
