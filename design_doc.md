@@ -21,3 +21,6 @@ Tokens:
 [Regex](https://regexone.com/)
 
 
+Usage: python3 compiler.py -l testing_simple_c_programs/test3.c
+
+

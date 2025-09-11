@@ -8,7 +8,7 @@ def quote(s: str) -> str:
     return '"' + s.replace('\\', '\\\\').replace('\n', '\\n').replace('\t', '\\t').replace('"', '\\"') + '"'
 
 def main():
-    parser = argparse.ArgumentParser(description="C11 toy compiler (lexer-only, regex MVP)")
+    parser = argparse.ArgumentParser(description="C11 toy compiler (lexer-only, regex)")
     parser.add_argument("-l", "--lex", metavar="FILE", dest="lex_file", help="Lex the given .c file and print tokens")
     args = parser.parse_args()
 

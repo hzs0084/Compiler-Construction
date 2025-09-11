@@ -17,7 +17,7 @@ token_specification = [
     ("INT",      r'\d+'),                       # decimal integers (MVP)
     ("PUNCT",    PUNCT_CHARCLASS),              # 1-char punctuators
     ("NEWLINE",  r'\n'),                        # track line numbers
-    ("SKIP",     r'[ \t\r\f\v]+'),              # skip spaces/tabs/etc. (but not newlines)
+    ("SKIP",     r'[ \t\r\f\v]+'),              # skips the spaces/tabs/etc. (but not newlines)
     ("MISMATCH", r'.'),                         # any other single char -> error
 ]
 
