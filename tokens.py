@@ -9,7 +9,8 @@ class TokenType(Enum):
     PUNCT = auto()
     EOF = auto()
 
-@dataclass
+@dataclass #why data clasS?
+
 class Token:
     type: TokenType
     lexeme: str

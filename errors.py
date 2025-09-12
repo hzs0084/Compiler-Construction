@@ -22,3 +22,8 @@ class ErrorReporter:
 
     def format(self, d: Diagnostic) -> str:
         return f"{d.filename}:{d.line}:{d.col}: {d.level}: {d.message}"
+# Need to handle more errors with 3x and @
+
+
+# Provide hints
+
