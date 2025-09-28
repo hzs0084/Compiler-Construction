@@ -1,42 +1,57 @@
-import argparse
-import sys
-from errors import ErrorReporter
-from lexer import lex
-from tokens import TokenType
+'''
+A C Compiler by Hemant Sherawat for COMP 6210
+'''
 
-def quote(s: str) -> str:
-    return '"' + s.replace('\\', '\\\\').replace('\n', '\\n').replace('\t', '\\t').replace('"', '\\"') + '"'
+import argparse
+import os
+import sys
+import lexer as lex
+from errors import LexerError
 
 def main():
-    parser = argparse.ArgumentParser(description="C11 toy compiler (lexer-only, regex)")
-    parser.add_argument("-l", "--lex", metavar="FILE", dest="lex_file", help="Lex the given .c file and print tokens")
-    args = parser.parse_args()
 
-    if not args.lex_file:
-        parser.print_help()
-        sys.exit(0)
+    # Command-line arguments for running the compiler
+    arg_parser = argparse.ArgumentParser(description='A tiny compiler for C language')
+    arg_parser.add_argument('input_file', help='Input source code file')
+    arg_parser.add_argument('-l', '--lexer', action='store_true', help='Print lexer output tokens')
+    args = arg_parser.parse_args()
 
-    path = args.lex_file
+    # See if input file exists
+    if not os.path.exists(args.input_file):
+        print(f"Error: Input file '{args.input_file}' not found")
+        return
+
+    # Check for .c extension in the input file
+    if (args.input_file) [-2:] != ".c":
+        print(".c extension not found in the file")
+        sys.exit()
+
+    # Read source code
+    with open(args.input_file, 'r') as file:
+        source = file.read()
+        #print(source_code)
+
+    # take that source code and run through the lexer for lexical analysis
+
+    # try the lex
+
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except OSError as e:
-        print(f"{path}: error: {e}", file=sys.stderr)
-        sys.exit(1)
+        tokens = lex.tokenize(source)
+    except LexerError as e:
+        print(f"{e}")
+        sys.exit(1)     # should prevent the unbound local error
 
-    errors = ErrorReporter()
-    tokens = lex(source, path, errors)
+    # i will add better error handling here later
 
-    for t in tokens:
-        if t.type is TokenType.EOF:
-            print(f"{t.line}:{t.col}  {t.type.name}")
-        else:
-            print(f"{t.line}:{t.col}  {t.type.name}  {quote(t.lexeme)}")
 
-    for d in errors.diagnostics:
-        print(errors.format(d), file=sys.stderr)
+    if args.lexer:
+        for tok in tokens:
+            if tok.kind is lex.TokenKind.EOF:
+                continue
+            print(f"{tok.line}:{tok.col}\t{tok.kind.name:<7}\t{tok.lexeme!r}") #come back to this later
 
-    sys.exit(1 if errors.any_errors() else 0)
+
+    #parse logic here eventually
 
 if __name__ == "__main__":
     main()

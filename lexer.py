@@ -1,76 +1,205 @@
 import re
-from typing import List
-from tokens import Token, TokenType
-from errors import ErrorReporter
-
-# Small keyword set
-KEYWORDS = {"int", "return", "if", "else", "while", "for", "char", "void"}
+from enum import Enum, auto
+from typing import List, NamedTuple
+from errors import LexerError
 
 
-PUNCT_CHARCLASS = r'[\[\]\(\)\{\}\.&\*\+\-\~\!\/%\<\>\^\|\?\:\;\=\,\#]'
 
-token_specification = [
-    ("MULTI_LINE_COMMENT", r'/\*[\s\S]*?\*/'),            # multi-line comments (non-greedy, spans lines)
-    ("SINGLE_LINE_COMMENT", r'//[^\n]*'),                  # single-line comments
-    ("STRING",   r'"(?:\\.|[^"\\\n])*"'),       # minimal C string: no newlines, allow \" and \\ escapes
-    ("ID",       r'[A-Za-z_][A-Za-z_0-9]*'),    # identifiers
-    ("INT",      r'\d+'),                       # decimal integers (MVP)
-    ("PUNCT",    PUNCT_CHARCLASS),              # 1-char punctuators
-    ("NEWLINE",  r'\n'),                        # track line numbers
-    ("SKIP",     r'[ \t\r\f\v]+'),              # skips the spaces/tabs/etc. (but not newlines)
-    ("MISMATCH", r'.'),                         # any other single char -> error
-]
 
-# Build one big regex with named groups: (?P<NAME>pattern)|...
-TOK_REGEX = '|'.join(f'(?P<{name}>{pattern})' for name, pattern in token_specification)
-MASTER = re.compile(TOK_REGEX)
+# https://www.geeksforgeeks.org/python/enum-auto-in-python/#
 
-def lex(program_text: str, filename: str, errors: ErrorReporter) -> List[Token]:
+class TokenKind(Enum):
+    KEYWORD = auto()
+    IDENT   = auto()
+    INT     = auto()
+    STRING  = auto()
+    OP      = auto()      # operators like ==, &&, +, -
+    PUNCT   = auto()      # punctuation like ; , ( ) { }
+    EOF     = auto()
+
+
+class Token(NamedTuple):
+    kind: TokenKind
+    lexeme: str
+    line: int
+    col: int
+
+
+KEYWORDS = {
+    "int", "return", "if", "else", "while", "for", "break", "continue"
+}
+
+
+def remove_comments(source):
+        # Remove multi-line comments /* ... */
+        multiline_comment = re.compile(r'/\*.*?\*/', re.DOTALL)
+        source = multiline_comment.sub('', source)
+        
+        # Remove single-line comments // ...
+        oneline_comment = re.compile(r'//.*')
+        source = oneline_comment.sub('', source)
+
+        return source
+
+# https://austinhenley.com/blog/teenytinycompiler1.html
+
+def tokenize(source: str) -> List[Token]:
+    """
+    Turn C-like source code into a list of Token(kind, lexeme, line, col).
+    Newlines/whitespace are skipped; line/col are tracked for diagnostics.
+    """
+
+    source = remove_comments(source)
+
+    token_spec = [
+        ("NEWLINE", r"\r?\n"),
+        ("SKIP",    r"[ \t\f\v]+"),
+        ("STRING",  r"\"([^\"\\]|\\.)*\""),
+        ("INT",     r"0|[1-9]\d*"),
+        ("ID",      r"[A-Za-z_]\w*"),
+        ("OP",      r"==|!=|<=|>=|\|\||&&|<<|>>|\+=|-=|\*=|/=|%="
+                    r"|->|::|="
+                    r"|[+\-*/%<>!&|~^]"),
+        ("PUNCT",   r"[;,(){}\[\]]"),  # <— includes ';'
+        ("MISMATCH",r"."),
+    ] 
+
+    master_pat = re.compile("|".join(f"(?P<{name}>{pat})" for name, pat in token_spec))
+
     tokens: List[Token] = []
-    line_num = 1
-    line_start = 0  # index of start of current line
+    line = 1
+    line_start = 0
 
-    match_object = MASTER.match(program_text)
-    while match_object is not None:
-        kind = match_object.lastgroup
-        value = match_object.group(kind)
+    for mo in master_pat.finditer(source):
+        kind = mo.lastgroup
+        text = mo.group()
 
         if kind == "NEWLINE":
-            line_start = match_object.end()
-            line_num += 1
+            line += 1
+            line_start = mo.end()
+            continue
+        if kind == "SKIP":
+            continue
+        if kind == "MISMATCH":
+            col = mo.start() - line_start + 1
+            raise LexerError(f"Unexpected character {text!r}", line, col)
 
-        elif kind == "SKIP" or kind == "SINGLE_LINE_COMMENT" or kind == "MULTI_LINE_COMMENT":
-            # Ignore these completely, but they still advance the cursor.
-            pass
+        col = mo.start() - line_start + 1
 
-        elif kind == "ID":
-            
-            token_kind = TokenType.KEYWORD if value in KEYWORDS else TokenType.IDENT
-            col = (match_object.start() - line_start) + 1
-            tokens.append(Token(token_kind, value, line_num, col))
-
+        if kind == "ID":
+            if text in KEYWORDS:
+                tokens.append(Token(TokenKind.KEYWORD, text, line, col))
+            else:
+                tokens.append(Token(TokenKind.IDENT, text, line, col))
         elif kind == "INT":
-            col = (match_object.start() - line_start) + 1
-            tokens.append(Token(TokenType.INT_LITERAL, value, line_num, col))
-
+            tokens.append(Token(TokenKind.INT, text, line, col))
         elif kind == "STRING":
-            col = (match_object.start() - line_start) + 1
-            tokens.append(Token(TokenType.STRING_LITERAL, value, line_num, col))
-
+            tokens.append(Token(TokenKind.STRING, text, line, col))
+        elif kind == "OP":
+            tokens.append(Token(TokenKind.OP, text, line, col))
         elif kind == "PUNCT":
-            col = (match_object.start() - line_start) + 1
-            tokens.append(Token(TokenType.PUNCT, value, line_num, col))
+            tokens.append(Token(TokenKind.PUNCT, text, line, col))
+        else:
+            # Should never happen because we handled everything above
+            raise SyntaxError(f"Unhandled token {text!r} at {line}:{col}")
 
-        elif kind == "MISMATCH":
-            col = (match_object.start() - line_start) + 1
-            
-            errors.report(filename, line_num, col, f"unexpected character {value!r}")
-
-        # Advance to the next token
-        match_object = MASTER.match(program_text, match_object.end())
-
-    # EOF token
-    # Column is 1 + index into current line
-    final_col = (len(program_text) - line_start) + 1
-    tokens.append(Token(TokenType.EOF, "", line_num, final_col))
+    tokens.append(Token(TokenKind.EOF, "", line, (len(source) - line_start) + 1))
     return tokens
+
+# class Lexer:
+#     def __init__(self, source):
+#         self.source = source + "\n"     #Append a new line to simplify lexing/parsing the last token/statement
+#         self.cur_char = ""      # Current character in the string
+#         self.cur_pos = -1       # Current position in the string
+#         self.nextChar()
+
+
+#     # Process the next character.
+#     def nextChar(self):
+#         self.cur_pos += 1
+#         if self.cur_pos >= len(self.source):
+#              self.cur_char = "\0" # EOF
+
+#         else:
+#              self.cur_char = self.source[self.cur_pos]
+
+#     # Return the lookahead character.
+#     def peek(self):
+#         if self.cur_pos + 1 >= len(self.source):
+#              return "\0"
+#         return self.source[self.cur_pos + 1]
+
+#     # Invalid token found, print error message and exit.
+#     def abort(self, message):
+#         sys.exit("Lexing error. " + message)
+		
+#     # Skip whitespace except newlines, which we will use to indicate the end of a statement.
+#     def skipWhitespace(self):
+#         while self.cur_char == " " or self.cur_char == "\t" or self.cur_char == "\r":
+#              self.nextChar()
+		
+#     # Skip comments in the code.
+#     def skipComment(self):
+#         pass
+
+#     # Return the next token.
+#     def getToken(self):
+#         # Check the first character of this token to see if we can decide what it is
+#         # if it is a multiple character operator that is something like !=, number, identifier, or keyword then we will process the rest.
+#         self.skipWhitespace()
+#         if self.cur_char == "+":
+#             token = Token(self.cur_char, TokenType.PLUS)           # Plus Token
+#         elif self.cur_char == "-":
+#             token = Token(self.cur_char, TokenType.MINUS)           # Minus Token
+#         elif self.cur_char == "*":
+#             token = Token(self.cur_char, TokenType.ASTERISK)            # Asterisk Token
+#         elif self.cur_char == "/":
+#             token = Token(self.cur_char, TokenType.SLASH)            # Slash Token
+#         elif self.cur_char == "\n":
+#             token = Token(self.cur_char, TokenType.NEWLINE)            # NewLine Token
+#         elif self.cur_char == "\0":
+#             token = Token(self.cur_char, TokenType.EOF)            # EOF Token
+#         else:
+#             self.abort("Unknown token: " + self.cur_char)            # Unknown Token
+
+#         self.nextChar()
+#         return token
+
+# class Token:
+     
+#     def __init__(self, token_text, token_kind):
+#          self.text = token_text     # The actual text from the token. Used for identifiers, strings, and numbers
+#          self.kind = token_kind     # The token type that thsi token is classified as
+    
+
+# class TokenType(enum.Enum):
+#      EOF = -1
+#      NEWLINE = 0
+#      NUMBER = 1
+#      IDENT = 2
+#      STRING = 3
+
+#      LABEL = 101
+#      GOTO = 102
+#      PRINT = 103
+#      INPUT = 104
+#      LET = 105
+#      IF = 106
+#      THEN = 107
+#      ENDIF = 108
+#      WHILE = 109
+#      REPEAT = 110
+#      ENDWHILE = 111
+
+#      EQ = 201
+#      PLUS = 202
+#      MINUS = 203
+#      ASTERISK = 204
+#      SLASH = 205
+#      EQEQ = 206
+#      NOTEQ = 207
+#      LT = 208
+#      LTEQ = 209
+#      GT = 210
+#      GTEQ = 211
+
