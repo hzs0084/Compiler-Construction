@@ -1,12 +1,14 @@
 from lexer import *
 
 def main():
-    source = "LET foobar = 123"
+    source = "+- */"
 
     lexer = Lexer(source)
 
-    while lexer.peek() != "\0":
-        print(lexer.cur_Char)
-        lexer.nextChar()
+    token = lexer.getToken()
+
+    while token.kind != TokenType.EOF:
+        print(token.kind)
+        token = lexer.getToken()
 
 main()

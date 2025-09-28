@@ -5,7 +5,7 @@ A C Compiler by Hemant Sherawat for COMP 6210
 import argparse
 import os
 import sys
-import lexer as tok
+import lexer as lex
 
 def main():
 
@@ -27,17 +27,29 @@ def main():
 
     # Read source code
     with open(args.input_file, 'r') as file:
-        source_code = file.read()
+        source = file.read()
         #print(source_code)
 
     # take that source code and run through the lexer for lexical analysis
 
-    source_code = tok.remove_comments(source_code)
+    # try the lex
 
-    print(source_code)
-    
+    try:
+        tokens = lex.tokenize(source)
+    except SyntaxError as e:
+        print(f"Lexing error: {e}")
+
+    # i will add better error handling here later
 
 
+    if args.lexer:
+        for tok in tokens:
+            if tok.kind is lex.TokenKind.EOF:
+                continue
+            print(f"{tok.line}:{tok.col}") #come back to this later
+
+
+    #parse logic here eventually
 
 if __name__ == "__main__":
     main()
