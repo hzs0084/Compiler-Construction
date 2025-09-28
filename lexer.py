@@ -1,7 +1,8 @@
 import re
 from enum import Enum, auto
 from typing import List, NamedTuple
-import sys
+from errors import LexerError
+
 
 
 
@@ -81,7 +82,7 @@ def tokenize(source: str) -> List[Token]:
             continue
         if kind == "MISMATCH":
             col = mo.start() - line_start + 1
-            raise SyntaxError(f"Unexpected character {text!r} at {line}:{col}")
+            raise LexerError(f"Unexpected character {text!r}", line, col)
 
         col = mo.start() - line_start + 1
 

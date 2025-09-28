@@ -6,6 +6,7 @@ import argparse
 import os
 import sys
 import lexer as lex
+from errors import LexerError
 
 def main():
 
@@ -36,8 +37,8 @@ def main():
 
     try:
         tokens = lex.tokenize(source)
-    except SyntaxError as e:
-        print(f"Lexing error: {e}")
+    except LexerError as e:
+        print(f"{e}")
         sys.exit(1)     # should prevent the unbound local error
 
     # i will add better error handling here later
