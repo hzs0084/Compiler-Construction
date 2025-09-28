@@ -5,11 +5,11 @@ A C Compiler by Hemant Sherawat for COMP 6210
 import argparse
 import os
 import sys
-import tokenizer as tok
+import lexer as tok
 
 def main():
 
-    # Command-line arguments for actually running the compiler
+    # Command-line arguments for running the compiler
     arg_parser = argparse.ArgumentParser(description='A tiny compiler for C language')
     arg_parser.add_argument('input_file', help='Input source code file')
     arg_parser.add_argument('-l', '--lexer', action='store_true', help='Print lexer output tokens')
@@ -19,7 +19,6 @@ def main():
     if not os.path.exists(args.input_file):
         print(f"Error: Input file '{args.input_file}' not found")
         return
-    
 
     # Check for .c extension in the input file
     if (args.input_file) [-2:] != ".c":
