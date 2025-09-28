@@ -38,6 +38,7 @@ def main():
         tokens = lex.tokenize(source)
     except SyntaxError as e:
         print(f"Lexing error: {e}")
+        sys.exit(1)     # should prevent the unbound local error
 
     # i will add better error handling here later
 
@@ -46,7 +47,7 @@ def main():
         for tok in tokens:
             if tok.kind is lex.TokenKind.EOF:
                 continue
-            print(f"{tok.line}:{tok.col}") #come back to this later
+            print(f"{tok.line}:{tok.col}\t{tok.kind.name:<7}\t{tok.lexeme!r}") #come back to this later
 
 
     #parse logic here eventually
