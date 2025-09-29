@@ -10,6 +10,8 @@ from errors import LexerError
 
 def main():
 
+    print("---A Tiny C Compiler made by Hemant Sherawat---\n")
+
     # Command-line arguments for running the compiler
     arg_parser = argparse.ArgumentParser(description='A tiny compiler for C language')
     arg_parser.add_argument('input_file', help='Input source code file')
@@ -52,6 +54,8 @@ def main():
 
 
     #parse logic here eventually
+
+    print("\n--- End ---\n")
 
 if __name__ == "__main__":
     main()

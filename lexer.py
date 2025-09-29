@@ -70,6 +70,8 @@ def tokenize(source: str) -> List[Token]:
     line = 1
     line_start = 0
 
+    print("Tokens and their line:col outputs \n")
+
     for mo in master_pat.finditer(source):
         kind = mo.lastgroup
         text = mo.group()
