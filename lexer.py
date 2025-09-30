@@ -41,8 +41,6 @@ def remove_comments(source):
 
         return source
 
-# https://austinhenley.com/blog/teenytinycompiler1.html
-
 def tokenize(source: str) -> List[Token]:
     """
     Turn C-like source code into a list of Token(kind, lexeme, line, col).
@@ -102,11 +100,13 @@ def tokenize(source: str) -> List[Token]:
         elif kind == "PUNCT":
             tokens.append(Token(TokenKind.PUNCT, text, line, col))
         else:
-            # Should never happen because we handled everything above
+            # Should never happen because everything is handled above but just in case
             raise SyntaxError(f"Unhandled token {text!r} at {line}:{col}")
 
     tokens.append(Token(TokenKind.EOF, "", line, (len(source) - line_start) + 1))
     return tokens
+
+# https://austinhenley.com/blog/teenytinycompiler1.html
 
 # class Lexer:
 #     def __init__(self, source):
