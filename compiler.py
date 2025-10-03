@@ -6,7 +6,10 @@ import argparse
 import os
 import sys
 import lexer as lex
-from errors import LexerError
+from errors import LexerError, ParserError
+from parser import Parser
+import abstract_syntax_tree as AST
+
 
 def main():
 
@@ -16,6 +19,7 @@ def main():
     arg_parser = argparse.ArgumentParser(description='A tiny compiler for C language')
     arg_parser.add_argument('input_file', help='Input source code file')
     arg_parser.add_argument('-l', '--lexer', action='store_true', help='Print lexer output tokens')
+    arg_parser.add_argument('-p', '--parser', action='store_true', help='Parse and print AST')
     args = arg_parser.parse_args()
 
     # See if input file exists
@@ -51,9 +55,20 @@ def main():
             if tok.kind is lex.TokenKind.EOF:
                 continue
             print(f"{tok.line}:{tok.col}\t{tok.kind.name:<7}\t{tok.lexeme!r}") #come back to this later
-
-
+    
     #parse logic here eventually
+
+    if args.parser:
+        try:
+            ast = Parser(tokens).parse()
+        except ParserError  as e:
+            print(f"Parsing error: {e}")
+            sys.exit(1)
+
+        print(AST.pretty(ast))
+
+
+  
 
     print("\n--- End ---\n")
 

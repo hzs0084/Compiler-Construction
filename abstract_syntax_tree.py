@@ -1,84 +1,33 @@
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Union
 
-# Program structure
 @dataclass
 class Program:
     functions: List["Function"]
-    pass
 
 @dataclass
 class Function:
     name: str
     body: "Block"
-    pass
 
 @dataclass
 class Block:
-    items: List[Union["VarDecl", "Stmt"]]
-    pass
+    items: List[object]
 
-@dataclass
-class VarDecl:
-    names: List[str]  
-    pass
+# print something here to debuggin purposes
 
-# Statements
-class Stmt:
-    pass
-
-@dataclass
-class Return(Stmt):
-    expr: "Expr"
-    pass
-
-@dataclass
-class If(Stmt):
-    cond: "Expr"
-    then_branch: Block
-    else_branch: Optional[Block]
-    pass
-
-@dataclass
-class While(Stmt):
-    cond: "Expr"
-    body: Block
-    pass
-
-@dataclass
-class ExprStmt(Stmt):
-    expr: "Expr"
-    pass
-
-# Expressions
-class Expr:
-    pass
-
-@dataclass
-class Assign(Expr):
-    name: str
-    value: Expr
-    pass
-
-@dataclass
-class Binary(Expr):
-    op: str
-    left: Expr
-    right: Expr
-    pass
-
-@dataclass
-class Unary(Expr):
-    op: str
-    expr: Expr
-    pass
-
-@dataclass
-class Var(Expr):
-    name: str
-    pass
-
-@dataclass
-class IntLit(Expr):
-    value: int
-    pass
+def pretty(node, indent: int = 0) -> str:
+    pad = "  " * indent
+    if isinstance(node, Program):
+        inner = "\n".join(pretty(f, indent + 1) for f in node.functions)
+        return f"{pad}Program\n{inner}"
+    if isinstance(node, Function):
+        inner = pretty(node.body, indent + 1)
+        return f"{pad}Function name={node.name}\n{inner}"
+    if isinstance(node, Block):
+        if not node.items:
+            return f"{pad}Block (empty)"
+        inner = "\n".join(pretty(it, indent + 1) for it in node.items)
+        return f"{pad}Block\n{inner}"
+    # Fallback (for when we add more nodes later)
+    return f"{pad}{node.__class__.__name__}({node})"

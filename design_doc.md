@@ -17,12 +17,15 @@ Type            -> int | float <br>
 
 ### Program & Functions
 Program -> FunctionList <br>
-FunctionList -> Function | Function FuncList <br>
+FunctionList -> Function | Function FunctionList <br>
 Function -> Type ID "(" ")" Block <br><br>
+Type     -> int <br>
+
+
 Block -> "{" ItemList "}" <br>
 ItemList -> ε | Item ItemList <br>
 Item -> Declaration | Statement <br><br>
-Declaration -> Type ID { "," id } ";" <br>
+Declaration -> Type ID { "," ID } ";" <br>
 Statement      ->  ReturnStmt
                | IfStmt
                | WhileStmt
@@ -35,7 +38,7 @@ WhileStmt      ->  "while" "(" Expression ")" Block<br>
 ExprStmt       ->  Expression ";"<br>
 
 Expression     -> Assignment <br>
-Assignment     -> id "=" Assignment 
+Assignment     -> ID "=" Assignment 
                | LogicalOr <br>
 
 LogicalOr      -> LogicalAnd { "||" LogicalAnd } <br>
@@ -45,8 +48,7 @@ Relational     -> Additive   { ("<" | "<=" | ">" | ">=") Additive } <br>
 Additive       -> Multiplicative { ("+" | "-") Multiplicative } <br>
 Multiplicative -> Unary { ("*" | "/" | "%") Unary }<br>
 Unary          -> ("!" | "-" | "+") Unary | Primary<br>
-Primary        -> "(" Expression ")" | id | num<br>
-Type           -> int
+Primary        -> "(" Expression ")" | ID | num<br>
 
 
 
