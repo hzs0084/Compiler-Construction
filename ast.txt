@@ -1,0 +1,21 @@
+int main() {
+  int x, y;
+  x = 2 + 3 * (x - 1);
+  return x;
+}
+
+
+Program
+  Function name=main
+    Block
+      VarDecl(names=['x','y'])
+      ExprStmt
+        Assign(name='x',
+               value=Binary('+',
+                    left=IntLit(2),
+                    right=Binary('*',
+                        left=IntLit(3),
+                        right=Binary('-',
+                              left=Var('x'),
+                              right=IntLit(1)))))
+      Return(expr=Var('x'))
