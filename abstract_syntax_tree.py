@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List
 
 @dataclass
 class Program:
@@ -29,5 +29,5 @@ def pretty(node, indent: int = 0) -> str:
             return f"{pad}Block (empty)"
         inner = "\n".join(pretty(it, indent + 1) for it in node.items)
         return f"{pad}Block\n{inner}"
-    # Fallback (for when we add more nodes later)
+    # Fallback for now
     return f"{pad}{node.__class__.__name__}({node})"
