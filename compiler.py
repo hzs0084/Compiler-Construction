@@ -65,9 +65,9 @@ def main():
             print(f"Parsing error: {e}")
             sys.exit(1)
 
-        #print(AST.pretty(ast))
+        print(AST.pretty(ast))
 
-        print(ast)
+        #print(ast)
 
 
   
