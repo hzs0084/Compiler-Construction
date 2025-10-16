@@ -102,7 +102,10 @@ class Parser:
         Block → "{" Item* "}"
         Item  → Declaration | Statement
         """
-
+        """
+        inside a block, we can expect one or more items so add it to the list of items
+        while it's not the end with } or at the end keep appending if it's declaration or a statement
+        """
         self._expect(lex.TokenKind.PUNCT, "{",msg= "expected '{' to start block")
         items: list[AST.VarDecl | AST.Stmt] = []
         while not self._check(lex.TokenKind.PUNCT, "}") and not self._at_end():
@@ -117,6 +120,12 @@ class Parser:
 
         """
         Declaration → "int" id { "," id } ";"
+        """
+
+        """
+        expect the keyword in the declaration, then expec the name of the decl, append that token to the list of
+        names now start the while loop for multiple decl that would be separated by a comma
+        expect to end with the ; declaration
         """
         self._expect(lex.TokenKind.KEYWORD, "int", msg= "declaration must start with 'int'")
         names: list[str] = []
