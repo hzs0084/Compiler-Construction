@@ -160,8 +160,8 @@ class Parser:
 
     def _if_stmt(self) -> AST.If:
         # IfStmt → "if" "(" Expression ")" Block [ "else" Block ]
-        self._check(lex.TokenKind.KEYWORD, "if")
-        self._check(lex.TokenKind.PUNCT, "(", "expected '(' after the if statement")
+        self._expect(lex.TokenKind.KEYWORD, "if")
+        self._expect(lex.TokenKind.PUNCT, "(", "expected '(' after the if statement")
         cond = self._expression()
         self._expect(lex.TokenKind.PUNCT, ")", msg="expected ')' after condition")
         then_blk = self._block()  # blocks are required
@@ -172,7 +172,13 @@ class Parser:
 
 
     def _while_stmt(self) -> AST.While:
-        pass
+        self._expect(lex.TokenKind.KEYWORD, "while")
+        self._expect(lex.TokenKind.PUNCT, "(", "expected '(' after while")
+        cond = self._expression()
+        self._expect(lex.TokenKind.PUNCT, ")", "expected ')' after condition")
+        body = self._block()       # need blocks in while
+        return AST.While(cond, body)
+
 
     def _expr_stmt(self) -> AST.ExprStmt:
         expr = self._expression()
@@ -183,30 +189,66 @@ class Parser:
     def _expression(self) -> AST.Expr:
         return self._assignment()
         #return self._additive()
-    
-    def _assignment(self):
-        # Assignment -> id "=" Assignment | Additive
+
+    def _assignment(self) -> AST.Expr:
+        # Assignment -> id "=" Assignment | LogicalOr
 
         if self._check(lex.TokenKind.IDENT) and self._peek_is_equals():
             name_tok = self._expect(lex.TokenKind.IDENT)
             self._expect(lex.TokenKind.OP, "=", "expected '=' in assignment")
             value = self._assignment() # This should make it right-associative recursion
             return AST.Assign(name_tok.lexeme, value)
-        return self._additive()
+        return self._logical_or()
 
+    def _logical_or(self) -> AST.Expr:
+        # LogicalOr → LogicalAnd { "||" LogicalAnd }
+        node = self._logical_and()
+        while self._match(lex.TokenKind.OP, "||"):
+            rhs = self._logical_and()
+            node = AST.Binary("||", node, rhs)
+        return node
 
+    def _logical_and(self) -> AST.Expr:
+        # LogicalAnd → Equality { "&&" Equality }
+        node = self._equality()
+        while self._match(lex.TokenKind.OP, "&&"):
+            rhs = self._equality()
+            node = AST.Binary("&&", node, rhs)
+        return node
 
-    def _logical_or(self):
-        pass
+    def _equality(self) -> AST.Expr:
+        # Equality → Relational { ("==" | "!=") Relational }
+        node = self._relational()
+        while True:
+            if self._match(lex.TokenKind.OP, "=="):
+                rhs = self._relational()
+                node = AST.Binary("==", node, rhs)
+            elif self._match(lex.TokenKind.OP, "!="):
+                rhs = self._relational()
+                node = AST.Binary("!=", node, rhs)
+            else:
+                break
+        return node
 
-    def _logical_and(self):
-        pass
-
-    def _equality(self):
-        pass
-
-    def _relational(self):
-        pass
+    def _relational(self) -> AST.Expr:
+        # Relational → Additive { ("<" | "<=" | ">" | ">=") Additive }
+        node = self._additive()
+        while True:
+            if self._match(lex.TokenKind.OP, "<"):
+                rhs = self._additive()
+                node = AST.Binary("<", node, rhs)
+            elif self._match(lex.TokenKind.OP, "<="):
+                rhs = self._additive()
+                node = AST.Binary("<=", node, rhs)
+            elif self._match(lex.TokenKind.OP, ">"):
+                rhs = self._additive()
+                node = AST.Binary(">", node, rhs)
+            elif self._match(lex.TokenKind.OP, ">="):
+                rhs = self._additive()
+                node = AST.Binary(">=", node, rhs)
+            else:
+                break
+        return node
 
     def _additive(self) -> AST.Expr:
         

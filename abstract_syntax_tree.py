@@ -34,13 +34,13 @@ class Return(Stmt):
 class If(Stmt):
     cond: "Expr"
     then_branch: "Block"
-    else_brnach: Optional["Block"]      #None if there's no else branch in the loop
+    else_branch: Optional["Block"] = None  #None if there's no else branch in the loop
 
 @dataclass
 class While(Stmt):
     cond: "Expr"
     body: "Block"
-    
+
 # Expressions
 class Expr:
     pass
@@ -86,8 +86,8 @@ def pretty(node, indent: int = 0) -> str:
         return f"{pad}VarDecl names={node.names}"
     if isinstance(node, If):
         out = f"{pad}If\n{pretty(node.cond, indent+1)}\n{pretty(node.then_branch, indent+1)}"
-    if node.else_branch:
-        out += "\n" + pretty(node.else_branch, indent+1)
+        if node.else_branch:
+            out += "\n" + pretty(node.else_branch, indent+1)
         return out
     if isinstance(node, While):
         return f"{pad}While\n{pretty(node.cond, indent+1)}\n{pretty(node.body, indent+1)}"
