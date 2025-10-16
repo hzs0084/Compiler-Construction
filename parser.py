@@ -143,6 +143,10 @@ class Parser:
     def _statement(self) -> AST.Stmt:
         if self._check(lex.TokenKind.KEYWORD, "return"):
             return self._return_stmt()
+        if self._check(lex.TokenKind.KEYWORD, "if"):
+            return self._if_stmt()
+        if self._check(lex.TokenKind.KEYWORD, "while"):
+            return self._while_stmt()
         if self._check(lex.TokenKind.PUNCT, "{"):
             return self._block()
         # default: expression statement
@@ -154,10 +158,13 @@ class Parser:
         self._expect(lex.TokenKind.PUNCT, ";", msg= "expected ';' after return statement")
         return AST.Return(expr)
 
-    def _if_stmt(self):
-        pass
+    def _if_stmt(self) -> AST.If:
+        # IfStmt → "if" "(" Expression ")" Block [ "else" Block ]
+        self._check(lex.TokenKind.KEYWORD, "if")
+        self._check(lex.TokenKind.PUNCT)
 
-    def _while_stmt(self):
+
+    def _while_stmt(self) -> AST.While:
         pass
 
     def _expr_stmt(self) -> AST.ExprStmt:
