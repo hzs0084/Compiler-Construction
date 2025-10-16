@@ -161,7 +161,14 @@ class Parser:
     def _if_stmt(self) -> AST.If:
         # IfStmt → "if" "(" Expression ")" Block [ "else" Block ]
         self._check(lex.TokenKind.KEYWORD, "if")
-        self._check(lex.TokenKind.PUNCT)
+        self._check(lex.TokenKind.PUNCT, "(", "expected '(' after the if statement")
+        cond = self._expression()
+        self._expect(lex.TokenKind.PUNCT, ")", msg="expected ')' after condition")
+        then_blk = self._block()  # blocks are required
+        else_blk = None
+        if self._match(lex.TokenKind.KEYWORD, "else"):
+            else_blk = self._block()
+        return AST.If(cond, then_blk, else_blk)
 
 
     def _while_stmt(self) -> AST.While:
