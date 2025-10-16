@@ -16,7 +16,11 @@ class Stmt:
 
 @dataclass
 class Block:
-    items: List[Union[Stmt]]
+    items: List[Union["VarDecl","Stmt"]]
+
+@dataclass
+class VarDecl:
+    names: List[str]     # e.g., ['x', 'y']
 
 @dataclass
 class ExprStmt(Stmt):
@@ -61,15 +65,26 @@ class Binary(Expr):
 def pretty(node, indent: int = 0) -> str:
     pad = "  " * indent
     if isinstance(node, Program):
-        inner = "\n".join(pretty(f, indent + 1) for f in node.functions)
-        return f"{pad}Program\n{inner}"
+        return f"{pad}Program\n" + "\n".join(pretty(f, indent+1) for f in node.functions)
     if isinstance(node, Function):
-        inner = pretty(node.body, indent + 1)
-        return f"{pad}Function name={node.name}\n{inner}"
+        return f"{pad}Function name={node.name}\n" + pretty(node.body, indent+1)
     if isinstance(node, Block):
-        if not node.items:
-            return f"{pad}Block (empty)"
-        inner = "\n".join(pretty(it, indent + 1) for it in node.items)
-        return f"{pad}Block\n{inner}"
-    # Fallback for now
-    return f"{pad}{node.__class__.__name__}({node})"
+        if not node.items: return f"{pad}Block (empty)"
+        return f"{pad}Block\n" + "\n".join(pretty(it, indent+1) for it in node.items)
+    if isinstance(node, VarDecl):
+        return f"{pad}VarDecl names={node.names}"
+    if isinstance(node, Return):
+        return f"{pad}Return\n{pretty(node.expr, indent+1)}"
+    if isinstance(node, ExprStmt):
+        return f"{pad}ExprStmt\n{pretty(node.expr, indent+1)}"
+    if isinstance(node, Assign):
+        return f"{pad}Assign {node.name}\n{pretty(node.value, indent+1)}"
+    if isinstance(node, Binary):
+        return f"{pad}Binary '{node.op}'\n{pretty(node.left, indent+1)}\n{pretty(node.right, indent+1)}"
+    if isinstance(node, Unary):
+        return f"{pad}Unary '{node.op}'\n{pretty(node.expr, indent+1)}"
+    if isinstance(node, Var):
+        return f"{pad}Var {node.name}"
+    if isinstance(node, IntLit):
+        return f"{pad}IntLit {node.value}"
+    return f"{pad}{node.__class__.__name__}"

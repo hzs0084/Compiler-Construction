@@ -97,15 +97,38 @@ class Parser:
         return AST.Block(items=[])
 
     def _block(self) -> AST.Block:
+
+        """
+        Block → "{" Item* "}"
+        Item  → Declaration | Statement
+        """
+
         self._expect(lex.TokenKind.PUNCT, "{",msg= "expected '{' to start block")
-        items: list[AST.Stmt] = []
+        items: list[AST.VarDecl | AST.Stmt] = []
         while not self._check(lex.TokenKind.PUNCT, "}") and not self._at_end():
-            items.append(self._statement())
+            if self._check(lex.TokenKind.KEYWORD, "int"):
+                items.append(self._declaration())
+            else:
+                items.append(self._statement())
         self._expect(lex.TokenKind.PUNCT, "}",msg= "expected '}' to start block")
         return AST.Block(items)
 
-    def _declaration(self):
-        pass
+    def _declaration(self) -> AST.VarDecl:
+
+        """
+        Declaration → "int" id { "," id } ";"
+        """
+        self._expect(lex.TokenKind.KEYWORD, "int", msg= "declaration must start with 'int'")
+        names: list[str] = []
+        first = self._expect(lex.TokenKind.IDENT, msg= "expected a variable name")
+        names.append(first.lexeme)
+
+        while self._match(lex.TokenKind.PUNCT, ","):
+            ident = self._expect(lex.TokenKind.IDENT, msg= "expected variable name after ','")
+            names.append(ident.lexeme)
+
+        self._expect(lex.TokenKind.PUNCT, ";",msg= "expected ';' after declaraation")
+        return AST.VarDecl(names)
 
     # statements
     def _statement(self) -> AST.Stmt:
