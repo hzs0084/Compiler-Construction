@@ -46,6 +46,13 @@ class Parser:
         tok = self._current()
         self.i += 1
         return tok
+    
+    def _peek_is_equals(self) -> bool:
+        j = self.i + 1
+        if j >= len(self.tokens):
+            return False
+        t = self.tokens[j]
+        return t.kind is lex.TokenKind.OP and t.lexeme == "="
 
     # entry
 
@@ -128,10 +135,20 @@ class Parser:
 
     # expressions
     def _expression(self) -> AST.Expr:
-        return self._additive()
+        return self._assignment()
+        #return self._additive()
     
     def _assignment(self):
-        pass
+        # Assignment -> id "=" Assignment | Additive
+
+        if self._check(lex.TokenKind.IDENT) and self._peek_is_equals():
+            name_tok = self._expect(lex.TokenKind.IDENT)
+            self._expect(lex.TokenKind.OP, "=", "expected '=' in assignment")
+            value = self._assignment() # This should make it right-associative recursion
+            return AST.Assign(name_tok.lexeme, value)
+        return self._additive()
+
+
 
     def _logical_or(self):
         pass
@@ -146,6 +163,7 @@ class Parser:
         pass
 
     def _additive(self) -> AST.Expr:
+        
         node = self._multiplicative()
         while True:
             if self._match(lex.TokenKind.OP, "+"):

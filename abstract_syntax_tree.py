@@ -31,6 +31,11 @@ class Expr:
     pass
 
 @dataclass
+class Assign(Expr):
+    name: str
+    value: Expr
+
+@dataclass
 class IntLit(Expr):
     value: int
 
