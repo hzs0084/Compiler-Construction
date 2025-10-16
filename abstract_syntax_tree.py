@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union, Optional
 
 @dataclass
 class Program:
@@ -10,9 +10,44 @@ class Function:
     name: str
     body: "Block"
 
+# Statements
+class Stmt: 
+    pass
+
 @dataclass
 class Block:
-    items: List[object]
+    items: List[Union[Stmt]]
+
+@dataclass
+class ExprStmt(Stmt):
+    expr: "Expr"
+
+@dataclass
+class Return(Stmt):
+    expr: "Expr"
+
+# Expressions
+class Expr:
+    pass
+
+@dataclass
+class IntLit(Expr):
+    value: int
+
+@dataclass
+class Var(Expr):
+    name: str
+
+@dataclass
+class Unary(Expr):
+    op: str
+    expr: Expr
+
+@dataclass
+class Binary(Expr):
+    op: str
+    left: Expr
+    right: Expr
 
 # print something here to debuggin purposes
 

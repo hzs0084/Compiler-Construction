@@ -74,7 +74,7 @@ class Parser:
         name_tok = self._expect(lex.TokenKind.IDENT, msg= "expected function name")
         self._expect(lex.TokenKind.PUNCT, "(",msg= "expected '(' after function name ")
         self._expect(lex.TokenKind.PUNCT, ")",msg= "expected ')' after function name")
-        body = self._block_empty_only()
+        body = self._block()
         return AST.Function(name_tok.lexeme, body)
     
     def _block_empty_only(self) -> AST.Block:
@@ -89,18 +89,31 @@ class Parser:
 
         return AST.Block(items=[])
 
-    def _block(self):
-        pass
+    def _block(self) -> AST.Block:
+        self._expect(lex.TokenKind.PUNCT, "{",msg= "expected '{' to start block")
+        items: list[AST.Stmt] = []
+        while not self._check(lex.TokenKind.PUNCT, "}") and not self._at_end():
+            items.append(self._statement())
+        self._expect(lex.TokenKind.PUNCT, "}",msg= "expected '}' to start block")
+        return AST.Block(items)
 
     def _declaration(self):
         pass
 
     # statements
-    def _statement(self):
-        pass
+    def _statement(self) -> AST.Stmt:
+        if self._check(lex.TokenKind.KEYWORD, "return"):
+            return self._return_stmt()
+        if self._check(lex.TokenKind.PUNCT, "{"):
+            return self._block()
+        # default: expression statement
+        return self._expr_stmt()
 
-    def _return_stmt(self):
-        pass
+    def _return_stmt(self) -> AST.Return:
+        self._expect(lex.TokenKind.KEYWORD, "return")
+        expr = self._expression()
+        self._expect(lex.TokenKind.PUNCT, ";", msg= "expected ';' after return statement")
+        return AST.Return(expr)
 
     def _if_stmt(self):
         pass
@@ -108,13 +121,15 @@ class Parser:
     def _while_stmt(self):
         pass
 
-    def _expr_stmt(self):
-        pass
+    def _expr_stmt(self) -> AST.ExprStmt:
+        expr = self._expression()
+        self._expect(lex.TokenKind.PUNCT, ";", msg="expected ';' after expression")
+        return AST.ExprStmt(expr)
 
     # expressions
-    def _expression(self):
-        pass
-
+    def _expression(self) -> AST.Expr:
+        return self._additive()
+    
     def _assignment(self):
         pass
 
@@ -130,14 +145,57 @@ class Parser:
     def _relational(self):
         pass
 
-    def _additive(self):
-        pass
+    def _additive(self) -> AST.Expr:
+        node = self._multiplicative()
+        while True:
+            if self._match(lex.TokenKind.OP, "+"):
+                rhs = self._multiplicative()
+                node = AST.Binary("+", node, rhs)
+            elif self._match(lex.TokenKind.OP, "-"):
+                rhs = self._multiplicative()
+                node = AST.Binary("-", node, rhs)
+            else:
+                break
+        return node
 
-    def _multiplicative(self):
-        pass
+    def _multiplicative(self) -> AST.Expr:
+        node = self._unary()
+        while True:
+            if self._match(lex.TokenKind.OP, "*"):
+                rhs = self._unary()
+                node = AST.Binary("*", node, rhs)
+            elif self._match(lex.TokenKind.OP, "/"):
+                rhs = self._unary()
+                node = AST.Binary("/", node, rhs)
+            elif self._match(lex.TokenKind.OP, "%"):
+                rhs = self._unary()
+                node = AST.Binary("%", node, rhs)
+            else:
+                break
+        return node
+    
+    def _unary(self) -> AST.Expr:
+        if self._match(lex.TokenKind.OP, "!"):
+            return AST.Unary("!", self._unary())
+        if self._match(lex.TokenKind.OP, "-"):
+            return AST.Unary("-", self._unary())
+        if self._match(lex.TokenKind.OP, "+"):
+            return AST.Unary("+", self._unary())
+        return self._primary()
 
-    def _unary(self):
-        pass
+    def _primary(self) -> AST.Expr:
+        if self._match(lex.TokenKind.PUNCT, "("):
+            expr = self._expression()
+            self._expect(lex.TokenKind.PUNCT, ")", msg="expected ')'")
+            return expr
 
-    def _primary(self):
-        pass
+        if self._check(lex.TokenKind.INT):
+            tok = self._expect(lex.TokenKind.INT)
+            return AST.IntLit(int(tok.lexeme))
+
+        if self._check(lex.TokenKind.IDENT):
+            tok = self._expect(lex.TokenKind.IDENT)
+            return AST.Var(tok.lexeme)
+
+        t = self._current()
+        raise ParserError(f"expected expression, got {t.kind.name} {t.lexeme!r}", t.line, t.col)
