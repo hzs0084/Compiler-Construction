@@ -10,6 +10,12 @@ class Function:
     name: str
     body: "Block"
 
+    # helpers for symbol table
+    start_line: int
+    start_col: int
+    end_line: int
+    end_col: int
+
 # Statements
 class Stmt: 
     pass

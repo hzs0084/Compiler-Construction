@@ -77,12 +77,22 @@ class Parser:
     Function -> Type ID () Block
     """
     def _function(self) -> AST.Function:
+
+        # need the position of the keyword 'int'
+        start_tok = self._current()
         self._expect(lex.TokenKind.KEYWORD, "int", msg= "functino must start with 'int'")
         name_tok = self._expect(lex.TokenKind.IDENT, msg= "expected function name")
         self._expect(lex.TokenKind.PUNCT, "(",msg= "expected '(' after function name ")
         self._expect(lex.TokenKind.PUNCT, ")",msg= "expected ')' after function name")
-        body = self._block()
-        return AST.Function(name_tok.lexeme, body)
+        body = self._block()    #takes the closing '}' inside
+
+        end_tok = self.tokens[self.i - 1]
+        return AST.Function(name_tok.lexeme,
+                            body = body,
+                            start_line = start_tok.line,
+                            start_col=start_tok.col,
+                            end_line=end_tok.line,
+                            end_col=end_tok.line)
     
     def _block_empty_only(self) -> AST.Block:
 
