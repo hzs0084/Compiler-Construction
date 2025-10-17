@@ -3,8 +3,14 @@ int main() {
     x = 0;
     y = 2;
     if (x < y) {
+
       x = x + 1;
-    } else {
+    }
+    // if x < 2) {  x = x + 1;}
+    // if (x < 2 { }
+    // if (x) x = 1;
+
+    else {
       x = x - 1;
     }
     while (x < 5) {

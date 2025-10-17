@@ -4,3 +4,9 @@ int main() {
   c = (a = 1) + (b = 2);
   return c;
 }
+
+
+// there should be an error here in the future because the type is not defined
+// would fall under semantics
+
+
