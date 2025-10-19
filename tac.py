@@ -8,14 +8,25 @@ class TACEmitter:
     def __init__(self):
         self.code: list[str] = []
         self.temp_counter = 0
+        self.label_counter = 0
+
 
     def new_temp(self) -> str:
         t = f"t{self.temp_counter}"
         self.temp_counter += 1
         return t
 
+    def new_label(self, base: str = "L") -> str:
+        l = f"{base}{self.label_counter}"
+        self.label_counter += 1
+        return l
+
+
     def emit(self, line: str) -> None:
         self.code.append(line)
+
+    def label(self, lab: str) -> None:
+        self.emit(f"{lab}:")
 
     # public
     def generate(self, program: AST.Program) -> list[str]:
@@ -46,11 +57,41 @@ class TACEmitter:
             _ = self._gen_expr(stmt.expr)  # value discarded
         elif isinstance(stmt, Block):
             self._gen_block(stmt)
-        elif isinstance(stmt, If) or isinstance(stmt, While):
-            # mplement control flow later
-            raise NotImplementedError("TAC for if/while is in the next milestone.")
+        elif isinstance(stmt, If):
+            self._gen_if(stmt)
+        elif isinstance(stmt, While):
+            self._gen_while(stmt)
         else:
             raise NotImplementedError(f"TAC for stmt {stmt.__class__.__name__}")
+
+    # control flow
+
+    def _gen_if(self, node: AST.If) -> None:
+        cond = self._gen_expr(node.cond)
+        if node.else_branch is None:
+            L_end = self.new_label("L")
+            self.emit(f"ifFalser {cond} goto {L_end}")
+            self._gen_block(node.then_branch)
+            self.label(L_end)
+        else:
+            L_else = self.new_label("L")
+            L_end  = self.new_label("L")
+            self.emit(f"ifFalse {cond} goto {L_else}")
+            self._gen_block(node.then_branch)
+            self.emit(f"goto {L_end}")
+            self.label(L_else)
+            self._gen_block(node.else_branch)
+            self.label(L_end)           
+
+    def _gen_while(self, node: AST.While) -> None:
+        Lstart = self.new_label("L")
+        Lend   = self.new_label("L")
+        self.label(Lstart)
+        cond = self._gen_expr(node.cond)
+        self.emit(f"ifFalse {cond} goto {Lend}")
+        self._gen_block(node.body)
+        self.emit(f"goto {Lstart}")
+        self.label(Lend)
 
     # expressions 
     def _gen_expr(self, expr: AST.Expr) -> str:
@@ -88,6 +129,6 @@ class TACEmitter:
 
 def generate_tac(program: AST.Program) -> list[str]:
     """
-    Convenience function: returns a list of TAC lines.
+    returns a list of TAC lines.
     """
     return TACEmitter().generate(program)
