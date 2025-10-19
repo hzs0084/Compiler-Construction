@@ -74,7 +74,7 @@ def main():
 
     # --parser: pretty print the AST
     if args.parser:
-        # if you have a pretty-printer:
+        # pretty-printer:
         try:
             from abstract_syntax_tree import pretty
             print(pretty(program_ast))
@@ -82,7 +82,7 @@ def main():
             # fallback if pretty() not available
             print(program_ast)
 
-    # --symtab: print your symbol tables
+    # --symtab: print symbol tables
     if args.symtab:
         from symfunc import build_function_rows, format_func_table, build_variable_rows, format_var_table
         filename = os.path.basename(args.input_file)
