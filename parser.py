@@ -139,15 +139,19 @@ class Parser:
         """
         self._expect(lex.TokenKind.KEYWORD, "int", msg= "declaration must start with 'int'")
         names: list[str] = []
+        poss: list[tuple[int,int]] = []
+
         first = self._expect(lex.TokenKind.IDENT, msg= "expected a variable name")
         names.append(first.lexeme)
+        poss.append((first.line, first.col))
 
         while self._match(lex.TokenKind.PUNCT, ","):
             ident = self._expect(lex.TokenKind.IDENT, msg= "expected variable name after ','")
             names.append(ident.lexeme)
+            poss.append((first.line, first.col))
 
         self._expect(lex.TokenKind.PUNCT, ";",msg= "expected ';' after declaraation")
-        return AST.VarDecl(names)
+        return AST.VarDecl(names, poss)
 
     # statements
     def _statement(self) -> AST.Stmt:

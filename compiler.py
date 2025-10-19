@@ -20,6 +20,7 @@ def main():
     arg_parser.add_argument('input_file', help='Input source code file')
     arg_parser.add_argument('-l', '--lexer', action='store_true', help='Print lexer output tokens')
     arg_parser.add_argument('-p', '--parser', action='store_true', help='Parse and print AST')
+    arg_parser.add_argument('--symtab', action='store_true', help='Print function symbol table')
     args = arg_parser.parse_args()
 
     # See if input file exists
@@ -68,6 +69,14 @@ def main():
         print(AST.pretty(ast))
 
         #print(ast)
+
+    # after parsing succeeds:
+    if args.symtab:
+        from symfunc import build_function_rows, format_table
+        rows = build_function_rows(ast)
+        # derive a short display name (like "main.c")
+        display_name = os.path.basename(args.input_file)
+        print(format_table(display_name, rows))
 
 
   

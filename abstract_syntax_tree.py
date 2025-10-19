@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union, Optional
+from typing import *
 
 @dataclass
 class Program:
@@ -27,6 +27,7 @@ class Block:
 @dataclass
 class VarDecl:
     names: List[str]     # e.g., ['x', 'y']
+    positions: List[Tuple[int, int]]
 
 @dataclass
 class ExprStmt(Stmt):
