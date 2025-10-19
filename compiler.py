@@ -8,8 +8,7 @@ import sys
 import lexer as lex
 from errors import LexerError, ParserError
 from parser import Parser
-import abstract_syntax_tree as AST
-
+from tac import generate_tac
 
 def main():
 
@@ -22,6 +21,7 @@ def main():
     arg_parser.add_argument('-p', '--parser', action='store_true', help='Parse and print AST')
     arg_parser.add_argument('--symtab', action='store_true', help='Print function symbol table')
     arg_parser.add_argument('-s', '--semantic', action='store_true', help='Run semantic checks')
+    arg_parser.add_argument('--tac', action='store_true', help='Emit three-address code')
 
     args = arg_parser.parse_args()
 
@@ -62,7 +62,7 @@ def main():
     #parse logic here eventually
 
     # Decide if we need to parse (parser/semantic/symtab/tac all need the AST)
-    need_parse = args.parser or args.semantic or args.symtab  # add args.tac later if you add TAC
+    need_parse = args.parser or args.semantic or args.symtab or args.tac
     program_ast = None
 
     if need_parse:
@@ -104,6 +104,13 @@ def main():
             sys.exit(1)
         print("Semantic check: OK")
 
+    # --tac
+
+    if args.tac:
+        lines = generate_tac(program_ast)
+        print("\n".join(lines))
+
+    
     # if args.parser:
     #     try:
     #         ast = Parser(tokens).parse()

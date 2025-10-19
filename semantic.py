@@ -23,7 +23,7 @@ class Scope:
 
 def analyze(program: AST.Program) -> None:
 
-    # do one top level check per function so that eac hhas its own scope
+    # do one top level check per function so that each has its own scope
 
     for fn in program.functions:
         analyze_function(fn)
