@@ -21,6 +21,8 @@ def main():
     arg_parser.add_argument('-l', '--lexer', action='store_true', help='Print lexer output tokens')
     arg_parser.add_argument('-p', '--parser', action='store_true', help='Parse and print AST')
     arg_parser.add_argument('--symtab', action='store_true', help='Print function symbol table')
+    arg_parser.add_argument('-s', '--semantic', action='store_true', help='Run semantic checks')
+
     args = arg_parser.parse_args()
 
     # See if input file exists
@@ -59,24 +61,90 @@ def main():
     
     #parse logic here eventually
 
-    if args.parser:
+    # Decide if we need to parse (parser/semantic/symtab/tac all need the AST)
+    need_parse = args.parser or args.semantic or args.symtab  # add args.tac later if you add TAC
+    program_ast = None
+
+    if need_parse:
         try:
-            ast = Parser(tokens).parse()
-        except ParserError  as e:
+            program_ast = Parser(tokens).parse()
+        except ParserError as e:
             print(f"Parsing error: {e}")
             sys.exit(1)
 
-        print(AST.pretty(ast))
+    # --parser: pretty print the AST
+    if args.parser:
+        # if you have a pretty-printer:
+        try:
+            from abstract_syntax_tree import pretty
+            print(pretty(program_ast))
+        except Exception:
+            # fallback if pretty() not available
+            print(program_ast)
+
+    # --symtab: print your symbol tables
+    if args.symtab:
+        from symfunc import build_function_rows, format_func_table, build_variable_rows, format_var_table
+        filename = os.path.basename(args.input_file)
+        frows = build_function_rows(program_ast)
+        vrows = build_variable_rows(program_ast)
+        print(format_func_table(filename, frows))
+        print()
+        print(format_var_table(filename, vrows))
+
+    # --semantic: run semantic checks
+    if args.semantic:
+        from semantic import analyze  # and optionally: from errors import SemanticError
+        try:
+            analyze(program_ast)
+        except Exception as e:  # optionally catch SemanticError specifically
+            import traceback
+            traceback.print_exc()   #remove this later
+            print(e)
+            sys.exit(1)
+        print("Semantic check: OK")
+
+    # if args.parser:
+    #     try:
+    #         ast = Parser(tokens).parse()
+    #     except ParserError  as e:
+    #         print(f"Parsing error: {e}")
+    #         sys.exit(1)
+
+    #     print(AST.pretty(ast))
+
+    #     if args.semantic:
+    #         try:
+    #             from semantic import analyze
+    #             analyze(ast)
+    #         except Exception as e:
+    #             # Catch SemanticError specifically if you prefer:
+    #             # from errors import SemanticError
+    #             # except SemanticError as e:
+    #             print(e)
+    #             sys.exit(1)
+    #         print("Semantic check: OK")
+    
+    #     if args.symtab:
+    #         from symfunc import build_function_rows, format_func_table, build_variable_rows, format_var_table
+    #         filename = os.path.basename(args.input_file)
+    #         frows = build_function_rows(ast)
+    #         vrows = build_variable_rows(ast)
+    #         print(format_func_table(filename, frows))
+    #         print()
+    #         print(format_var_table(filename, vrows))
 
         #print(ast)
 
     # after parsing succeeds:
-    if args.symtab:
-        from symfunc import build_function_rows, format_table
-        rows = build_function_rows(ast)
-        # derive a short display name (like "main.c")
-        display_name = os.path.basename(args.input_file)
-        print(format_table(display_name, rows))
+    # if args.symtab:
+    #     from symfunc import build_function_rows, format_table
+    #     rows = build_function_rows(ast)
+    #     # derive a short display name (like "main.c")
+    #     display_name = os.path.basename(args.input_file)
+    #     print(format_table(display_name, rows))
+    
+    # after parse succeeds
 
 
   
