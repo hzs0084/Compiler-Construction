@@ -6,13 +6,16 @@ class Scope:
     def __init__(self, parent: Optional["Scope"] = None):
         self.parent = parent
         self.names: Dict[str, str] = {}    #name -> type string for example "int"
+        # { int x, y; } → {"x": "int", "y": "int"}
 
+    # Handles declaration and detects redeclaration in the same scope
     def declare(self, name:str, typ:str):
         if name in self.names:
             raise SemanticError(f"redeclaraion of '{name}' in the same scope")
         
         self.names[name] = typ
 
+    # an inner block can access outer variables.
     def lookup(self, name:str) -> Optional[str]:
         s: Optional[Scope] = self
         while s is not None:
