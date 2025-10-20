@@ -228,39 +228,33 @@ C-- Language Specification: https://www2.cs.arizona.edu/~debray/Teaching/CSc453/
 
 EBNF Notation overview: https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form
 
-Compilers (books & tutorials)
+Compilers (tutorials)
 
-Aho, Lam, Sethi, Ullman — Compilers: Principles, Techniques, and Tools (“Dragon Book”)
+Dmitry Soshkinov - https://www.youtube.com/playlist?list=PLGNbPb3dQJ_6aPNnlBvXGyNMlDtNTqN5I
 
-Keith Cooper & Linda Torczon — Engineering a Compiler
+Neso Academy - https://www.youtube.com/playlist?list=PLBlnK6fEyqRjT3oJxFXRgjPNzeS-LFY-q
 
-Andrew W. Appel — Modern Compiler Implementation
-
-Terence Parr — Language Implementation Patterns
-
-Robert Nystrom — Crafting Interpreters (great for recursive descent patterns)
-
-LLVM Kaleidoscope tutorial (IR & codegen structure): https://llvm.org/docs/tutorial/
+[Lecture Notes](https://suif.stanford.edu/dragonbook/)
 
 Articles / Series that influenced the approach
 
 Austin Henley — Let’s make a Teeny Tiny Compiler (esp. Part 2 parsing): https://austinhenley.com/blog/teenytinycompiler2.html
 
-Eli Bendersky — posts on parsing and AST design
-
-“Three-Address Code” notes (various university course pages)
 
 Semantic Analysis & Symbol Tables
 
 McGill CS520 slides on Symbol Tables (scoping): https://www.cs.mcgill.ca/~cs520/2020/slides/7-symbol.pdf
 
-Marco Auberer — Build a Compiler: Symbol Table
+Marco Auberer — [Build a Compiler: Symbol Table](https://marcauberer.medium.com/build-a-compiler-symbol-table-2d4582234112)
 
-Drifter1 — Writing a Simple Compiler on my own — Symbol Table
+Drifter1 — [Writing a Simple Compiler on my own — Symbol Table](https://steemit.com/programming/@drifter1/writing-a-simple-compiler-on-my-own-symbol-table-basic-structure)
+
+
+TAC
+
+[Overview on TAC](https://www.geeksforgeeks.org/compiler-design/three-address-code-compiler/#)
+
 
 Optimizations
 
-Constant Folding: classic optimization notes across compiler texts (Dragon Book)
-
-Short-circuit evaluation semantics in C (K&R, ISO C standard discussions)
 """

@@ -100,21 +100,19 @@ def main():
 
     # --semantic: run semantic checks
     if args.semantic:
-        from semantic import analyze  # and optionally: from errors import SemanticError
+        from semantic import analyze
+        from errors import SemanticError 
         try:
             analyze(program_ast)
-        except Exception as e:  # optionally catch SemanticError specifically
-            import traceback
-            traceback.print_exc()   #remove this later
-            print(e)
+        except SemanticError as e:  # catch SemanticError specifically
+            print(f"Semantic error: {e}")
             sys.exit(1)
         print("Semantic check: OK")
         
-    # --optimizations (constfold) if enabled
+    # --optimizations (constfold) if enabled eventually 
     do_constfold = (args.opt_level >= 1) or args.constfold
     if do_constfold:
-        from constfold import fold_program
-        program_ast = fold_program(program_ast)
+        pass
 
     # --tac
     if args.tac:

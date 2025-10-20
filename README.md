@@ -17,13 +17,13 @@ Pipeline: Lex → Parse → AST → Semantic Analysis → Symbol Tables → TAC 
 - Symbol tables: function summary + variables with scope levels/positions
  
 - TAC (Three-Address Code):
- 
-- arithmetic, comparisons, assignments, return
- 
-- control flow: if/else, while (labels + gotos)
- 
-- short-circuit && and ||
- 
+    - arithmetic, comparisons, assignments, return
+    
+    - control flow: if/else, while (labels + gotos)
+    
+    - short-circuit && and ||
+    
+
 - Optimizations:
     - -O1 / --constfold: constant folding (short-circuit aware)
 
