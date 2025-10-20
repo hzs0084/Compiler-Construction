@@ -74,7 +74,7 @@ class TACEmitter:
         cond = self._gen_expr(node.cond)
         if node.else_branch is None:
             L_end = self.new_label("L")
-            self.emit(f"ifFalser {cond} goto {L_end}")
+            self.emit(f"ifFalse {cond} goto {L_end}")
             self._gen_block(node.then_branch)
             self.label(L_end)
         else:
@@ -170,3 +170,14 @@ def generate_tac(program: AST.Program) -> list[str]:
     returns a list of TAC lines.
     """
     return TACEmitter().generate(program)
+
+
+"""
+Refs: https://anoopsarkar.github.io/compilers-class/assets/lectures/ir.pdf
+
+https://stackoverflow.com/questions/59256249/code-generation-for-short-circuit-boolean-operators
+https://web.stanford.edu/class/archive/cs/cs143/cs143.1128/handouts/240%20TAC%20Examples.pdf
+https://www.cs.columbia.edu/~aho/cs4115/Lectures/15-03-25.html
+https://austinhenley.com/blog/teenytinycompiler3.html
+
+"""

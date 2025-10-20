@@ -100,7 +100,7 @@ A **recursive-descent** parser closely mirrors the grammar with one method per r
 - `_match(kind, [text])` (consume if matches)
 - `_expect(kind, [text], msg)` (consume or raise `ParserError` with line/col)
 
-This gives precise, friendly error messages.
+To have precise error messages.
 
 ### 3.2 AST nodes (core)
 
@@ -144,7 +144,7 @@ Error type: `SemanticError("…")`.
 
 ---
 
-## 5. Symbol Table Reporting
+## 5. Symbol Table
 
 For design/visibility purposes, `symfunc.py` builds two textual tables:
 
@@ -190,11 +190,6 @@ Function positions come from parser-captured `start_line/col` and end `}` positi
 - (Room for `-O2`, `-O3` in future work)
 
 ### Constant Folding (`constfold.py`)
-- Folds `+ - * / %`, unary `! - +`, comparisons `== != < <= > >=`
-- **Short-circuit aware** folding for `&&` and `||` (never “executes” the right side if the left decides the result)
-- Safe division/mod (no fold on divide/mod by 0)
-- Folds within expressions, `ExprStmt`, `Return`, `If`/`While` conditions (structure preserved)
-- Uses `dataclasses.replace` to keep positional metadata intact
 
 Optimization order in driver:
 1) (optional) `--semantic`  

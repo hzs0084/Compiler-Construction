@@ -106,6 +106,15 @@ def tokenize(source: str) -> List[Token]:
     tokens.append(Token(TokenKind.EOF, "", line, (len(source) - line_start) + 1))
     return tokens
 
+"""
+Edge/corner notes:
+
+String literal support exists in lexer but parser/AST doesn’t handle strings yet
+
+Multi-char ops like <<, >>, +=, etc. are tokenized but not parsed by the grammar.
+"""
+
+
 # https://austinhenley.com/blog/teenytinycompiler1.html
 
 # class Lexer:

@@ -6,16 +6,20 @@ import abstract_syntax_tree as AST
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
-        self.i = 0
+        self.i = 0      # i serves as an index
         pass
 
     # utility methods
+
+    # returns the current token currently being pointed to by the parser using (self.i)
     def _current(self):
         return self.tokens[self.i]
 
+    # Returns True if the current token is EOF
     def _at_end(self):
         return self._current().kind is lex.TokenKind.EOF
 
+    # lookahead
     def _check(self, kind, text=None):
         if self._at_end():
             return False
@@ -30,12 +34,14 @@ class Parser:
         
         return True
 
+    # consume
     def _match(self, kind, text=None):
         if self._check(kind, text):
             self.i += 1
             return True
         return False
 
+    # consume or throw ParserError eith line/col
     def _expect(self, kind, text=None, msg=""):
         if not self._check(kind, text):
             t = self._current()
@@ -47,6 +53,7 @@ class Parser:
         self.i += 1
         return tok
     
+    # one token lookahead to detect assignment
     def _peek_is_equals(self) -> bool:
         j = self.i + 1
         if j >= len(self.tokens):
@@ -80,7 +87,7 @@ class Parser:
 
         # need the position of the keyword 'int'
         start_tok = self._current()
-        self._expect(lex.TokenKind.KEYWORD, "int", msg= "functino must start with 'int'")
+        self._expect(lex.TokenKind.KEYWORD, "int", msg= "function must start with 'int'")
         name_tok = self._expect(lex.TokenKind.IDENT, msg= "expected function name")
         self._expect(lex.TokenKind.PUNCT, "(",msg= "expected '(' after function name ")
         self._expect(lex.TokenKind.PUNCT, ")",msg= "expected ')' after function name")
@@ -92,7 +99,7 @@ class Parser:
                             start_line = start_tok.line,
                             start_col=start_tok.col,
                             end_line=end_tok.line,
-                            end_col=end_tok.line)
+                            end_col=end_tok.col)
     
     def _block_empty_only(self) -> AST.Block:
 
@@ -186,6 +193,7 @@ class Parser:
 
 
     def _while_stmt(self) -> AST.While:
+        # "while" "(" Expression ")" Block
         self._expect(lex.TokenKind.KEYWORD, "while")
         self._expect(lex.TokenKind.PUNCT, "(", "expected '(' after while")
         cond = self._expression()
@@ -195,11 +203,13 @@ class Parser:
 
 
     def _expr_stmt(self) -> AST.ExprStmt:
+        # Expression ";"
         expr = self._expression()
         self._expect(lex.TokenKind.PUNCT, ";", msg="expected ';' after expression")
         return AST.ExprStmt(expr)
 
     # expressions
+    # assignment
     def _expression(self) -> AST.Expr:
         return self._assignment()
         #return self._additive()
@@ -319,3 +329,4 @@ class Parser:
 
         t = self._current()
         raise ParserError(f"expected expression, got {t.kind.name} {t.lexeme!r}", t.line, t.col)
+    

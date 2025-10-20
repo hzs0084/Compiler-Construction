@@ -113,3 +113,9 @@ def pretty(node, indent: int = 0) -> str:
     if isinstance(node, IntLit):
         return f"{pad}IntLit {node.value}"
     return f"{pad}{node.__class__.__name__}"
+
+
+"""
+Ref for dataclass: https://stackoverflow.com/questions/47955263/what-are-data-classes-and-how-are-they-different-from-common-classes
+
+"""

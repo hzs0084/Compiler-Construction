@@ -111,7 +111,10 @@ def analyze_expr(expr: AST.Expr, scope: Scope) -> str:
 
 # This allows shadowing: a name declared in an inner block can have the same name as an outer one (typical C behavior).
 
-# It enforces “declare before use” naturally because we traverse items in order.
+# It enforces “declare before use” naturally so that items are traversed in order.
 
 # Ref: https://stackoverflow.com/questions/67555064/typeerror-specialgenericalias-object-does-not-support-item-assignment
+"""
+https://stackoverflow.com/questions/5893163/what-is-the-purpose-of-the-single-underscore-variable-in-python
 
+"""
