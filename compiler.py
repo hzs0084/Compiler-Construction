@@ -22,6 +22,10 @@ def main():
     arg_parser.add_argument('--symtab', action='store_true', help='Print function symbol table')
     arg_parser.add_argument('-s', '--semantic', action='store_true', help='Run semantic checks')
     arg_parser.add_argument('--tac', action='store_true', help='Emit three-address code')
+    arg_parser.add_argument('-O', dest='opt_level', type=int, default=0,
+                            help='Optimization level (0=off, 1=const folding, 2+=future)')
+    arg_parser.add_argument('--constfold', action='store_true',
+                            help='Enable constant folding (same as -O1+)')
 
     args = arg_parser.parse_args()
 
@@ -62,7 +66,9 @@ def main():
     #parse logic here eventually
 
     # Decide if we need to parse (parser/semantic/symtab/tac all need the AST)
-    need_parse = args.parser or args.semantic or args.symtab or args.tac
+    need_parse = (
+                    args.parser or args.semantic or args.symtab or args.tac
+                    or args.opt_level > 0 or args.constfold)
     program_ast = None
 
     if need_parse:
@@ -103,14 +109,19 @@ def main():
             print(e)
             sys.exit(1)
         print("Semantic check: OK")
+        
+    # --optimizations (constfold) if enabled
+    do_constfold = (args.opt_level >= 1) or args.constfold
+    if do_constfold:
+        from constfold import fold_program
+        program_ast = fold_program(program_ast)
 
     # --tac
-
     if args.tac:
         lines = generate_tac(program_ast)
         print("\n".join(lines))
 
-    
+
     # if args.parser:
     #     try:
     #         ast = Parser(tokens).parse()

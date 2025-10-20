@@ -21,13 +21,17 @@ class TACEmitter:
         self.label_counter += 1
         return l
 
-
     def emit(self, line: str) -> None:
         self.code.append(line)
 
     def label(self, lab: str) -> None:
         self.emit(f"{lab}:")
 
+    def _as_bool(self, v: str) -> str:
+        t = self.new_temp()
+        self.emit(f"{t} = {v} != 0")
+        return t
+    
     # public
     def generate(self, program: AST.Program) -> list[str]:
         # Optional: per-function headers
@@ -92,6 +96,34 @@ class TACEmitter:
         self._gen_block(node.body)
         self.emit(f"goto {Lstart}")
         self.label(Lend)
+    
+    def _gen_logical_or(self, left_expr: AST.Expr, right_expr: AST.Expr) -> str:
+        #   result = (left || right) as 0/1 with short-circuit
+        l = self._as_bool(self._gen_expr(left_expr))
+        result = self.new_temp()
+        self.emit(f"{result} = {l}")    # start with left's truth value
+        L_end = self.new_label("L")
+        # if left is true, skip right
+        self.emit((f"if {result} goto {L_end}"))
+        r = self._as_bool(self._gen_expr(right_expr))
+        result = self.new_temp()
+        self.emit(f"{result} = {r}")
+        self.label(L_end)
+        return result
+    
+    def _gen_logical_and(self, left_expr: AST.Expr, right_expr: AST.Expr) -> str:
+        #   result = (left && right) as 0/1 with short-circuit
+        l = self._as_bool(self._gen_expr(left_expr))
+        result = self.new_temp()
+        self.emit(f"{result} = {l}")    # start with left's truth value
+        L_end = self.new_label("L")
+        # if left is false, skip right
+        self.emit((f"ifFalse {result} goto {L_end}"))
+        r = self._as_bool(self._gen_expr(right_expr))
+        result = self.new_temp()
+        self.emit(f"{result} = {r}")
+        self.label(L_end)
+        return result
 
     # expressions 
     def _gen_expr(self, expr: AST.Expr) -> str:
@@ -114,7 +146,13 @@ class TACEmitter:
             else:
                 raise NotImplementedError(f"unary op {expr.op!r}")
             return t
+        
         if isinstance(expr, Binary):
+            if expr.op == "||":
+                return self._gen_logical_or(expr.left, expr.right)
+            if expr.op == "&&":
+                return self._gen_logical_and(expr.left, expr.right)        
+
             left = self._gen_expr(expr.left)
             right = self._gen_expr(expr.right)
             t = self.new_temp()
