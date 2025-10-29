@@ -109,61 +109,19 @@ def main():
             sys.exit(1)
         print("Semantic check: OK")
         
-    # --optimizations (constfold) if enabled eventually 
-    do_constfold = (args.opt_level >= 1) or args.constfold
-    if do_constfold:
-        pass
-
-    # --tac
     if args.tac:
-        lines = generate_tac(program_ast)
-        print("\n".join(lines))
+        tac_lines = generate_tac(program_ast)
 
+        # --optimizations (constfold) on IR if enabled
+        do_constfold = (args.opt_level >= 1) or args.constfold
+        if do_constfold:
+            try:
+                from opt_constfold import fold_tac
+                tac_lines = fold_tac(tac_lines)
+            except Exception as e:
+                print(f"[constfold error] {e}")
 
-    # if args.parser:
-    #     try:
-    #         ast = Parser(tokens).parse()
-    #     except ParserError  as e:
-    #         print(f"Parsing error: {e}")
-    #         sys.exit(1)
-
-    #     print(AST.pretty(ast))
-
-    #     if args.semantic:
-    #         try:
-    #             from semantic import analyze
-    #             analyze(ast)
-    #         except Exception as e:
-    #             # Catch SemanticError specifically if you prefer:
-    #             # from errors import SemanticError
-    #             # except SemanticError as e:
-    #             print(e)
-    #             sys.exit(1)
-    #         print("Semantic check: OK")
-    
-    #     if args.symtab:
-    #         from symfunc import build_function_rows, format_func_table, build_variable_rows, format_var_table
-    #         filename = os.path.basename(args.input_file)
-    #         frows = build_function_rows(ast)
-    #         vrows = build_variable_rows(ast)
-    #         print(format_func_table(filename, frows))
-    #         print()
-    #         print(format_var_table(filename, vrows))
-
-        #print(ast)
-
-    # after parsing succeeds:
-    # if args.symtab:
-    #     from symfunc import build_function_rows, format_table
-    #     rows = build_function_rows(ast)
-    #     # derive a short display name (like "main.c")
-    #     display_name = os.path.basename(args.input_file)
-    #     print(format_table(display_name, rows))
-    
-    # after parse succeeds
-
-
-  
+        print("\n".join(tac_lines))
 
     print("\n--- End ---\n")
 

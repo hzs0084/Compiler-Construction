@@ -5,19 +5,20 @@
 import abstract_syntax_tree as AST
 
 class TACEmitter:
+    
+    # two counters one for temp and one for label
     def __init__(self):
         self.code: list[str] = []
         self.temp_counter = 0
         self.label_counter = 0
 
-
     def new_temp(self) -> str:
-        t = f"t{self.temp_counter}"
+        t = f"t{self.temp_counter}" # t0, t1, ...
         self.temp_counter += 1
         return t
 
     def new_label(self, base: str = "L") -> str:
-        l = f"{base}{self.label_counter}"
+        l = f"{base}{self.label_counter}"   # L0, L1, ..
         self.label_counter += 1
         return l
 
@@ -32,9 +33,10 @@ class TACEmitter:
         self.emit(f"{t} = {v} != 0")
         return t
     
-    # public
+    # public entry point for thefunction 
+    
     def generate(self, program: AST.Program) -> list[str]:
-        # Optional: per-function headers
+        # For each function, write a header translate its body then put a blank link
         for fn in program.functions:
             self.emit(f"# function {fn.name} (int)")
             self._gen_block(fn.body)
@@ -42,15 +44,20 @@ class TACEmitter:
         return self.code
 
     # blocks & statements 
+
+    # inside a {}, wrote notes for decls and translate each statement
+
     def _gen_block(self, block: AST.Block) -> None:
         for item in block.items:
             if isinstance(item, AST.VarDecl):
-                # No storage layout yet; just a comment so you can see them
+                # No storage layout yet, it's just a comment so I can see them
                 self.emit(f"# decl int {', '.join(item.names)}")
             elif isinstance(item, AST.Stmt):
                 self._gen_stmt(item)
             elif isinstance(item, AST.Block):
                 self._gen_block(item)
+
+    # look at the shape of the statement and use the right logic based on that
 
     def _gen_stmt(self, stmt: AST.Stmt) -> None:
         from abstract_syntax_tree import Return, ExprStmt, If, While, Block
@@ -70,6 +77,8 @@ class TACEmitter:
 
     # control flow
 
+    # if the test is false, jump to the else/end, otherwise do the then part
+
     def _gen_if(self, node: AST.If) -> None:
         cond = self._gen_expr(node.cond)
         if node.else_branch is None:
@@ -87,7 +96,9 @@ class TACEmitter:
             self._gen_block(node.else_branch)
             self.label(L_end)
 
-            #    might run into an issue with basic blocks
+    #    might run into an issue with basic blocks in while loop - Dr. Mulder
+
+    # check the rule, if it's false, leave, or else do the body and then go back 
 
     def _gen_while(self, node: AST.While) -> None:
         Lstart = self.new_label("L")
@@ -99,6 +110,8 @@ class TACEmitter:
         self.emit(f"goto {Lstart}")
         self.label(Lend)
     
+
+    # If the first part already decides the answer, don’t even look at the second part.
     def _gen_logical_or(self, left_expr: AST.Expr, right_expr: AST.Expr) -> str:
         #   result = (left || right) as 0/1 with short-circuit
         l = self._as_bool(self._gen_expr(left_expr))
@@ -128,6 +141,9 @@ class TACEmitter:
         return result
 
     # expressions 
+
+    # To compute an expression, compute smaller pieces, store results in temp variables, and combine.
+
     def _gen_expr(self, expr: AST.Expr) -> str:
         from abstract_syntax_tree import IntLit, Var, Unary, Binary, Assign
         if isinstance(expr, IntLit):
@@ -147,13 +163,13 @@ class TACEmitter:
                 self.emit(f"{t} = ! {val}")
             else:
                 raise NotImplementedError(f"unary op {expr.op!r}")
-            return t
+            return t    # return printable operand strings.
         
         if isinstance(expr, Binary):
             if expr.op == "||":
-                return self._gen_logical_or(expr.left, expr.right)
+                return self._gen_logical_or(expr.left, expr.right)  # special short-circuit routines.
             if expr.op == "&&":
-                return self._gen_logical_and(expr.left, expr.right)        
+                return self._gen_logical_and(expr.left, expr.right) # special short-circuit routines.
 
             left = self._gen_expr(expr.left)
             right = self._gen_expr(expr.right)
@@ -166,6 +182,8 @@ class TACEmitter:
             # assignment is an expression and its value is the left value after assignment
             return expr.name
         raise NotImplementedError(f"TAC for expr {expr.__class__.__name__}")
+
+# Make an emitter and ask it to translate the whole program.
 
 def generate_tac(program: AST.Program) -> list[str]:
     """
