@@ -85,7 +85,9 @@ class TACEmitter:
             self.emit(f"goto {L_end}")
             self.label(L_else)
             self._gen_block(node.else_branch)
-            self.label(L_end)           
+            self.label(L_end)
+
+            #    might run into an issue with basic blocks
 
     def _gen_while(self, node: AST.While) -> None:
         Lstart = self.new_label("L")
