@@ -19,13 +19,20 @@
 
 This project implements a tiny compiler for a **restricted subset of C**. The pipeline:
 
+The pipeline:
+
 1. **Lexing** (`lexer.py`) → tokens  
 2. **Parsing** (`parser.py`) → AST (recursive descent)  
 3. **Semantic Analysis** (`semantic.py`) → scoped symbol checks  
-4. **Symbol Tables (reporting)** (`symfunc.py`) → function/variable tables  
-5. **Intermediate Representation** (`tac.py`) → three-address code (TAC) with labels  
-6. **Optimizations** (`constfold.py`) → constant folding (+ short-circuit aware)  
-7. **Driver/CLI** (`compiler.py`) → flags to run each stage and see outputs
+4. **TAC (external IR)** (`tac.py`) → three-address code (strings)  
+5. **TAC → Internal IR** (`ir/tac_adapter.py`) → `Instr` objects  
+6. **Basic Blocks & CFG** (`ir/builder.py`) → blocks, successors/predecessors  
+7. **IR Optimizations** (`ir/pipeline.py`)  
+   - Constant Folding (`ir/const_fold.py`)  
+   - Dead Code Elimination: unreachable + dead store (`ir/dce.py`)  
+8. **Round-trip for debugging**: IR → TAC (`ir/tac_adapter.py`)  
+9. **(Later)** Register Allocation → x86-64 emission
+
 
 The goal is a learnable, “Henley-style and Dr. Mulder style of three stage process” implementation: build small, working milestones; keep code simple and readable; and be able to demonstrate each stage with a flag.
 
@@ -182,21 +189,69 @@ Function positions come from parser-captured `start_line/col` and end `}` positi
 
 ---
 
-## 7. Optimizations
+## 6.5 Low-Level IR (Internal)
 
-### Flags
-- `-O0` (default): no optimization
-- `-O1` or `--constfold`: enable constant folding
-- (Room for `-O2`, `-O3` in future work)
+**Values:** `Const(k)`, `Var(name)`  
+**Instructions** (subset):
+- `mov dst, a`
+- `binop dst, op, a, b`  (op ∈ {+, -, *, /, %, ==, !=, <, <=, >, >=, &&, ||})
+- `unop dst, op, a`      (op ∈ {+, -, !})
+- `br cond ? L_true : L_false`
+- `jmp L`
+- `return a`
+- `label L` (used only during linearization; blocks print their label)
 
-### Constant Folding (`constfold.py`)
+**Basic Block:** labeled list of instructions with **exactly one terminator** at the end (`br`/`jmp`/`return`).
 
-Optimization order in driver:
-1) (optional) `--semantic`  
-2) (if enabled) `constfold`  
-3) `--tac` emission over the (possibly) simplified AST
+**Function:** list of blocks + computed `succ`/`pred` maps (CFG).
 
----
+## 6.6 TAC ↔ IR Adapter
+
+- **TAC → IR** (`ir/tac_adapter.py`): small, pattern-based parser (regex) maps TAC lines like  
+  `t1 = a + 7`, `x = y`, `ifFalse c goto L2`, `goto L3`, `L0:`, `return v` → IR `Instr`s.  
+  For `ifFalse`, a **FALLTHRU** placeholder is used and resolved by the builder.
+- **IR → TAC**: re-emits readable TAC so existing CLI/dev flow doesn’t change.
+
+This lets us keep TAC as a user-visible debug format, but run all optimizations on the internal IR.
+
+## 6.7 Building Basic Blocks & CFG
+
+**Block formation** (`ir/builder.py`):
+- Start with `_entry` (if first item isn’t a label).
+- Split on labels and on terminators (`br`/`jmp`/`return`).
+- Insert an explicit `jmp` when a block would otherwise fall through.
+- Resolve `br cond ? FALLTHRU : Lfalse` to point to the next block as `L_true`.
+
+**CFG:** compute `succ` (outgoing edges) and `pred` (incoming) per block.
+
+## 7. IR Optimizations (Book-Aligned)
+
+Optimizations run on the **internal IR** with basic blocks/CFG:
+
+**Pass ordering (iterated to fixpoint):**
+1. **Constant Folding** (`ir/const_fold.py`)
+   - Fold `binop(Const, Const)` and `unop(Const)` → `Const`.
+   - Simplify `br Const` to `jmp` (enables reachability pruning).
+2. **Dead Code Elimination** (`ir/dce.py`)
+   - **Unreachable block elimination**: mark-and-sweep from entry via CFG.
+   - **Dead store/code**: per-block backward liveness using successor live-outs; drop `mov/binop/unop` writing to a non-live destination and having **no side effects**.
+
+*Side-effect model:* currently no side-effecting instructions; when calls/stores are added, they’ll be marked as side-effecting so DCE preserves them.
+
+**(Deferred to later milestone)** Register allocation (linear-scan) and x86-64 emission.
+
+
+<!-- ### CLI Flags (relevant to IR)
+
+- `--tac`         Emit TAC (after IR optimization if `-O > 0`)
+- `-O <n>`        Optimization level on IR
+  - `-O0`  no IR optimizations
+  - `-O1`  constant folding + dead code elimination (IR)
+  - (future) higher levels can add more
+- `--dump-blocks`         Print IR basic blocks/terminators (pre-opt)
+- `--dump-cfg`            With `--dump-blocks`, include successors
+- `--dump-blocks-after`   Print IR basic blocks after optimization
+ -->
 
 ## 8. CLI & Usage
 

@@ -112,32 +112,49 @@ def main():
     if args.tac:
         tac_lines = generate_tac(program_ast)
 
-        # O1: constant folding
-        if (args.opt_level >= 1) or args.constfold:
-            from opt_constfold import fold_tac
-            tac_lines = fold_tac(tac_lines)
-
-        # O3: algebraic simplification, then quick fold again
-        if args.opt_level >= 3:
-            from opt_algebra import simplify_tac
-            tac_lines = simplify_tac(tac_lines)
-            from opt_constfold import fold_tac
-            tac_lines = fold_tac(tac_lines)
-
-        # O1+: local constant propagation (runs for O1 and higher)
+        # Convert TAC -> IR, optimize, IR -> TAC
+        from ir.tac_adapter import tac_to_linear_ir, ir_to_tac
+        from ir.builder import linear_to_blocks
+        from ir.pipeline import optimize_function
+        
+        # get function name for header (your TAC header has it)
+        func_name = "main"  # or parse it from the "# function ..." comment if you prefer
+        linear_ir, header = tac_to_linear_ir(func_name, tac_lines)
+        fn = linear_to_blocks(func_name, linear_ir)
+        
         if args.opt_level >= 1:
-            from opt_constprop import const_propagate
-            tac_lines = const_propagate(tac_lines)
-
-        # O2: copy propagation
-        if args.opt_level >= 2:
-            from opt_copyprop import copy_propagate
-            tac_lines = copy_propagate(tac_lines)
-            # O2+: DCE
-            from opt_dce import dce
-            tac_lines = dce(tac_lines)
-
+            optimize_function(fn)
+        
+        tac_lines = ir_to_tac(fn, header)
         print("\n".join(tac_lines))
+
+
+        # # O1: constant folding
+        # if (args.opt_level >= 1) or args.constfold:
+        #     from opt_constfold import fold_tac
+        #     tac_lines = fold_tac(tac_lines)
+
+        # # O3: algebraic simplification, then quick fold again
+        # if args.opt_level >= 3:
+        #     from opt_algebra import simplify_tac
+        #     tac_lines = simplify_tac(tac_lines)
+        #     from opt_constfold import fold_tac
+        #     tac_lines = fold_tac(tac_lines)
+
+        # # O1+: local constant propagation (runs for O1 and higher)
+        # if args.opt_level >= 1:
+        #     from opt_constprop import const_propagate
+        #     tac_lines = const_propagate(tac_lines)
+
+        # # O2: copy propagation
+        # if args.opt_level >= 2:
+        #     from opt_copyprop import copy_propagate
+        #     tac_lines = copy_propagate(tac_lines)
+        #     # O2+: DCE
+        #     from opt_dce import dce
+        #     tac_lines = dce(tac_lines)
+
+        # print("\n".join(tac_lines))
 
         # # O1: constant folding (IR)
         # do_constfold = (args.opt_level >= 1) or args.constfold
