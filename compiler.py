@@ -56,7 +56,6 @@ def main():
 
     # i will add better error handling here later
 
-
     if args.lexer:
         for tok in tokens:
             if tok.kind is lex.TokenKind.EOF:
@@ -99,7 +98,7 @@ def main():
         print(format_var_table(filename, vrows))
 
     # --semantic: run semantic checks
-    if args.semantic:
+    if args.semantic:       # or args.tac for debugging
         from semantic import analyze
         from errors import SemanticError 
         try:
@@ -109,19 +108,112 @@ def main():
             sys.exit(1)
         print("Semantic check: OK")
         
+    # --tac
     if args.tac:
         tac_lines = generate_tac(program_ast)
 
-        # --optimizations (constfold) on IR if enabled
-        do_constfold = (args.opt_level >= 1) or args.constfold
-        if do_constfold:
-            try:
-                from opt_constfold import fold_tac
-                tac_lines = fold_tac(tac_lines)
-            except Exception as e:
-                print(f"[constfold error] {e}")
+        # O1: constant folding
+        if (args.opt_level >= 1) or args.constfold:
+            from opt_constfold import fold_tac
+            tac_lines = fold_tac(tac_lines)
+
+        # O3: algebraic simplification, then quick fold again
+        if args.opt_level >= 3:
+            from opt_algebra import simplify_tac
+            tac_lines = simplify_tac(tac_lines)
+            from opt_constfold import fold_tac
+            tac_lines = fold_tac(tac_lines)
+
+        # O1+: local constant propagation (runs for O1 and higher)
+        if args.opt_level >= 1:
+            from opt_constprop import const_propagate
+            tac_lines = const_propagate(tac_lines)
+
+        # O2: copy propagation
+        if args.opt_level >= 2:
+            from opt_copyprop import copy_propagate
+            tac_lines = copy_propagate(tac_lines)
+            # O2+: DCE
+            from opt_dce import dce
+            tac_lines = dce(tac_lines)
 
         print("\n".join(tac_lines))
+
+        # # O1: constant folding (IR)
+        # do_constfold = (args.opt_level >= 1) or args.constfold
+        # if do_constfold:
+        #     try:
+        #         from opt_constfold import fold_tac
+        #         tac_lines = fold_tac(tac_lines)
+        #     except Exception as e:
+        #         print(f"[constfold error] {e}")
+
+        # # O3: algebraic simplification (IR)
+        # if args.opt_level >= 3:
+        #     try:
+        #         from opt_algebra import simplify_tac
+        #         tac_lines = simplify_tac(tac_lines)
+        #     except Exception as e:
+        #         print(f"[algebra error] {e}")
+
+        # print("\n".join(tac_lines))
+
+    
+
+    # # if args.tac:
+    #     tac_lines = generate_tac(program_ast)
+
+    #     print(f"[debug] before passes: {len(tac_lines)}")
+
+    #     # O1: constant folding (IR)
+    #     do_constfold = (args.opt_level >= 1) or args.constfold
+    #     if do_constfold:
+    #         from opt_constfold import fold_tac as _fold_tac
+    #         print(f"[debug] constfold from: {_fold_tac.__module__}")
+    #         _after_cf = _fold_tac(tac_lines)
+    #         print(f"[debug] after constfold: {len(_after_cf)}")
+    #     else:
+    #         _after_cf = tac_lines
+
+    #     # O3: algebraic simplification (IR)
+    #     if args.opt_level >= 3:
+    #         from opt_algebra import simplify_tac as _simplify_tac
+    #         print(f"[debug] algebra from: {_simplify_tac.__module__}")
+    #         _after_alg = _simplify_tac(_after_cf)
+    #         print(f"[debug] after algebra: {len(_after_alg)}")
+    #     else:
+    #         _after_alg = _after_cf
+
+    #     tac_lines = _after_alg
+    #     print(f"[debug] before print: {len(tac_lines)}")
+
+
+    #     print("[debug] raw TAC (first 20 lines):")
+    #     for i, ln in enumerate(tac_lines[:20], 1):
+    #         print(f"{i:02d}: {ln}")
+
+
+        # # O1: constant folding (IR)
+        # do_constfold = (args.opt_level >= 1) or args.constfold
+        # if do_constfold:
+        #     try:
+        #         from opt_constfold import fold_tac
+        #         tac_lines = fold_tac(tac_lines)
+        #     except Exception as e:
+        #         print(f"[constfold error] {e}")
+
+        # # O3: algebraic simplification (IR)
+        # if args.opt_level >= 2:
+        #     try:
+        #         from opt_algebra import simplify_tac
+        #         tac_lines = simplify_tac(tac_lines)
+        #     except Exception as e:
+        #         print(f"[algebra error] {e}")
+
+        # print(f"[debug] --tac={args.tac}  -O={args.opt_level}  constfold={args.constfold}")
+        # print(f"[debug] TAC lines: {len(tac_lines)}")
+        # print("\n".join(tac_lines))
+
 
     print("\n--- End ---\n")
 
