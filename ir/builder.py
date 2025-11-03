@@ -9,7 +9,7 @@ def linear_to_blocks(func_name: str, linear: List[Instr]) -> Function:
 
     def new_anon_label():
         nonlocal bb_idx
-        lab = f"_bb{bb_idx}"
+        lab = f"_Basic-Block{bb_idx}"
         bb_idx += 1
         return lab
 

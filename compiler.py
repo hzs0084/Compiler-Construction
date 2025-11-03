@@ -116,15 +116,18 @@ def main():
         from ir.tac_adapter import tac_to_linear_ir, ir_to_tac
         from ir.builder import linear_to_blocks
         from ir.pipeline import optimize_function
-        
+
         # get function name for header (your TAC header has it)
         func_name = "main"  # or parse it from the "# function ..." comment if you prefer
         linear_ir, header = tac_to_linear_ir(func_name, tac_lines)
         fn = linear_to_blocks(func_name, linear_ir)
-        
-        if args.opt_level >= 1:
-            optimize_function(fn)
-        
+
+
+        optimize_function(fn, opt_level=args.opt_level)
+
+        # if args.opt_level >= 1:
+        #     optimize_function(fn)
+
         tac_lines = ir_to_tac(fn, header)
         print("\n".join(tac_lines))
 

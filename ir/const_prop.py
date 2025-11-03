@@ -7,7 +7,7 @@ def _const_of(v: Value, env: Dict[str, Const]) -> Value:
         return c if c is not None else v
     return v # already constant
 
-def const_propogate_function(fn: Function) -> bool:
+def const_propagate_function(fn: Function) -> bool:
     changed = False
     for b in fn.blocks: # where is it getting that block from? 
         env: Dict[str, Const] = {}
