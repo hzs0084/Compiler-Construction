@@ -5,41 +5,60 @@ from ir.tac_adapter import FALLTHRU
 def linear_to_blocks(func_name: str, linear: List[Instr]) -> Function:
     blocks: List[Block] = []
     label_to_block: Dict[str, Block] = {}
+    bb_idx = 0
+
+    def new_anon_label():
+        nonlocal bb_idx
+        lab = f"_bb{bb_idx}"
+        bb_idx += 1
+        return lab
 
     # Start with a synthetic entry if first isn’t a label
-    cur = None
-    def start_block(lbl: str):
-        nonlocal cur
-        cur = Block(label=lbl)
-        blocks.append(cur)
-        label_to_block[lbl] = cur
+    cur: Block | None = None
 
-    if not linear or linear[0].kind != "label":
-        start_block("_entry")
+    
+    # Entry Block
+
+    cur = Block(label="_entry")
+    blocks.append(cur)
+    label_to_block[cur.label] = cur
 
     for ins in linear:
         if ins.kind == "label":
-            # close previous block with fallthrough jmp if needed
+            # close previous block with fallthrough jmp if unterminated
             if cur and cur.instrs and cur.instrs[-1].kind not in {"br","jmp","ret"}:
                 # fallthrough to this label
                 cur.instrs.append(Instr(kind="jmp", tlabel=ins.label))
-            start_block(ins.label)
+            cur = Block(label=ins.label)
+            blocks.append(cur)
+            label_to_block[cur.label] = cur
             continue
+
+        # start a fresh anon block if needed
         if cur is None:
-            start_block("_entry")
+            cur = Block(label=new_anon_label())
+            blocks.append(cur)
+            label_to_block[cur.label] = cur
+
         cur.instrs.append(ins)
+
         if ins.kind in {"br","jmp","ret"}:
             cur = None  # next instruction starts a new block unless it's a label
 
-    fn = Function(name=func_name, blocks=blocks)
-    # resolve FALLTHRU in br to the next block label in order
-    for i, b in enumerate(fn.blocks):
-        if not b.instrs: continue
+    
+
+    # Resolve Fallthru
+
+    for i, b in enumerate(blocks):
+        if not b.instrs: 
+            continue
         term = b.instrs[-1]
         if term.kind == "br" and term.tlabel == FALLTHRU:
             # next block if exists else no fallthrough
-            nxt = fn.blocks[i+1].label if i+1 < len(fn.blocks) else None
-            term.tlabel = nxt
+            nxt = blocks[i+1].label if i+1 < len(blocks) else None
+            b.instrs[-1] = Instr(kind="br", a = term.a, tlabel = nxt, flabel = term.flabel)
+
+    fn = Function(name=func_name, blocks=blocks)
 
     build_cfg(fn)
     return fn
