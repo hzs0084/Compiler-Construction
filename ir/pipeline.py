@@ -25,9 +25,9 @@ def optimize_function(fn: Function, opt_level: int = 0) -> None:
             if const_fold_function(fn):      changed = True
             if dead_store_elim(fn):          changed = True
 
-        # # O3: algebraic simplification + cleanup
-        # if opt_level >= 3:
-        #     from ir.algebra import algebra_simplify_function
-        #     if algebra_simplify_function(fn): changed = True
-        #     if const_fold_function(fn):        changed = True
-        #     if dead_store_elim(fn):            changed = True
+        # O3: algebraic simplification + cleanup
+        if opt_level >= 3:
+            from ir.algebra import algebra_simplify_function
+            if algebra_simplify_function(fn): changed = True
+            if const_fold_function(fn):        changed = True
+            if dead_store_elim(fn):            changed = True
