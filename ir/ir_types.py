@@ -8,7 +8,7 @@ class Const: value: int
 class Var:   name: str
 Value = Union[Const, Var]
 
-# Ops we care about now
+# Ops to focus on now
 BINOPS = {"+","-","*","/","%","==","!=", "<","<=",">",">=","&&","||"}
 UNOPS  = {"+","-","!"}
 

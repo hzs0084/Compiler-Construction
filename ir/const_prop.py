@@ -9,7 +9,7 @@ def _const_of(v: Value, env: Dict[str, Const]) -> Value:
 
 def const_propagate_function(fn: Function) -> bool:
     changed = False
-    for b in fn.blocks: # where is it getting that block from? 
+    for b in fn.blocks: # 
         env: Dict[str, Const] = {}
         new: list[Instr] = []
 
