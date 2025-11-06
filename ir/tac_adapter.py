@@ -5,20 +5,65 @@ from ir.ir_types import *
 
 # TAC -> IR 
 
+# LABEL: a standalone label line like "L0:" or "loop_start:"
 _LABEL     = re.compile(r'^\s*(?P<lab>[A-Za-z_]\w*):\s*$')
+
+# IFFALSE: conditional branch "ifFalse <cond> goto <Label>"
+# - <cond> is a var or integer literal; target label in group 'L'
+# - Example: "ifFalse t3 goto Lend"
 _IFFALSE   = re.compile(r'^\s*ifFalse\s+(?P<cond>[A-Za-z_]\w*|-?\d+)\s+goto\s+(?P<L>[A-Za-z_]\w*)\s*$')
+
+# GOTO: unconditional jump "goto <Label>"
+# - Example: "goto L2"
 _GOTO      = re.compile(r'^\s*goto\s+(?P<L>[A-Za-z_]\w*)\s*$')
+
+# RETURN: function return "return <value>"
+# - <value> is a var or integer literal
+# - Example: "return t7" or "return 0"
 _RETURN    = re.compile(r'^\s*return\s+(?P<v>[A-Za-z_]\w*|-?\d+)\s*$')
+
+
+# ASSIGNBIN: binary op assignment "dst = a <op> b"
+# - dst, a, b are vars or ints; <op> in {+,-,*,/,%,==,!=,<=,<,>=,>,&&,||}
+# - Named groups: 'dst', 'a', 'op', 'b'
+# - Example: "t1 = x + 7", "t2 = a && b", "t3 = i <= 10"
 _ASSIGNBIN = re.compile(r'^\s*(?P<dst>[A-Za-z_]\w*)\s*=\s*(?P<a>[A-Za-z_]\w*|-?\d+)\s*(?P<op>\+|-|\*|/|%|==|!=|<=|<|>=|>|&&|\|\|)\s*(?P<b>[A-Za-z_]\w*|-?\d+)\s*$')
+
+
+# ASSIGNUN: unary op assignment "dst = <op> a"
+# - <op> in {+, -, !}; a is var or int
+# - Example: "t0 = - x", "t1 = ! t0"
 _ASSIGNUN  = re.compile(r'^\s*(?P<dst>[A-Za-z_]\w*)\s*=\s*(?P<op>\+|-|!)\s*(?P<a>[A-Za-z_]\w*|-?\d+)\s*$')
+
+# ASSIGN: simple copy/const move "dst = src"
+# - Covers both var-to-var and const-to-var moves
+# - Example: "y = x", "x = 0"
 _ASSIGN    = re.compile(r'^\s*(?P<dst>[A-Za-z_]\w*)\s*=\s*(?P<src>[A-Za-z_]\w*|-?\d+)\s*$')
+
+
+# COMMENT: any line starting with '#' (including leading spaces)
+# keep those so to re-emit function/decl comments in output
 _COMMENT   = re.compile(r'^\s*#')   # keep to re-emit later
+
+
+# DECLCMT: a '# decl …' comment line (declaration header)
 _DECLCMT   = re.compile(r'^\s*#\s*decl\b')
 
 FALLTHRU = "__FALLTHRU__"  # placeholder for ifFalse fallthrough
 
+
+# Helper: turn a token string into an IR Value.
+# Examples: "42" -> Const(42), "-7" -> Const(-7), "t3" -> Var("t3"), "x" -> Var("x")
 def _val(tok: str) -> Value:
     return Const(int(tok)) if tok.lstrip('-').isdigit() else Var(tok)
+
+
+"""
+PRE:  tac_lines is a list of TAC strings (labels, ifFalse, goto, x=y, x=a+b, return v).
+POST: Returns (linear_ir, header_comments). linear_ir is a list of IR Instr
+      in source order and header_comments keeps top-of-function comments (# function, # decl).
+NOTE: Uses simple regex patterns; unknown lines are ignored (adapter is forgiving).       `ifFalse cond goto L` is lowered to `br cond ? FALLTHRU : L` (builder resolves FALLTHRU).
+"""
 
 def tac_to_linear_ir(func_name: str, tac_lines: List[str]) -> Tuple[List[Instr], List[str]]:
     """Returns IR instructions and a list of header comment lines to preserve."""
@@ -27,7 +72,7 @@ def tac_to_linear_ir(func_name: str, tac_lines: List[str]) -> Tuple[List[Instr],
 
     for ln in tac_lines:
         if _COMMENT.match(ln):
-            # keep function/decl comments, ignore others if you want
+            # keep function/decl comments, ignore others
             header_comments.append(ln)
             continue
 
@@ -79,6 +124,10 @@ def tac_to_linear_ir(func_name: str, tac_lines: List[str]) -> Tuple[List[Instr],
 def _str_val(v: Value) -> str:
     return str(v.value) if isinstance(v, Const) else v.name
 
+"""
+PRE:  fn has well-formed blocks/terminators and header_comments are optional leading lines.
+POST: Returns TAC-like strings for printing/debugging. One label per block is emitted.
+"""
 def ir_to_tac(fn: Function, header_comments: List[str]) -> List[str]:
     out: List[str] = []
     out.extend(header_comments)  # keep the "# function", "# decl ..." lines once

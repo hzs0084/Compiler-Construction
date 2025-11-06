@@ -2,6 +2,13 @@ from collections import deque
 from typing import Set, Dict
 from ir.ir_types import *
 
+"""
+PRE:  fn has blocks and a valid CFG with a single entry block (with the label '_entry').
+POST: Removes blocks not reachable from entry via succ edges and rebuilds CFG.
+      Returns True if any block was deleted.
+NOTE: Run after const-fold so `br Const` -> `jmp` exposes unreachable arms.
+"""
+
 def drop_unreachable(fn: Function) -> bool:
     if not fn.blocks: return False
     start = fn.blocks[0].label
@@ -39,7 +46,7 @@ def _def(ins: Instr) -> str|None:
 """
 PRE:  fn has a valid CFG. Instructions may define dst or be pure uses for example - (mov/binop/unop/br/ret).
 POST: Backward liveness per block (with successor live-outs) and removes pure instructions
-       whose destination is not live-out. Returns True iff any instruction was deleted.
+       whose destination is not live-out. Returns True if any instruction was deleted.
 NOTE: Relies on Instr.has_side_effect() to keep it accurate when adding calls/stores.
 """
 

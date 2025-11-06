@@ -75,6 +75,13 @@ def linear_to_blocks(func_name: str, linear: List[Instr]) -> Function:
     build_cfg(fn)
     return fn
 
+"""
+PRE:  fn.blocks is a list of blocks where the last instruction of each block is a terminator (br/jmp/ret).
+POST: Populates fn.succ and fn.pred maps from terminators.
+NOTE: Keep block terminator invariant intact or CFG becomes incorrect.
+"""
+
+
 def build_cfg(fn: Function) -> None:
     succ: Dict[str, List[str]] = {}
     pred: Dict[str, List[str]] = {}
