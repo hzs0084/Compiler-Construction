@@ -19,6 +19,8 @@ def drop_unreachable(fn: Function) -> bool:
     build_cfg(fn)
     return len(fn.blocks)!=before
 
+# Returns the set of variable names read by this instruction (no Consts, no dst).
+
 def _uses(ins: Instr) -> Set[str]:
     s:set[str]=set()
     def add(v):
@@ -28,8 +30,18 @@ def _uses(ins: Instr) -> Set[str]:
     elif ins.kind=="br": add(ins.a)
     return s
 
+# Returns the destination variable name defined by this instruction, or None.
+
 def _def(ins: Instr) -> str|None:
     return ins.dst.name if ins.dst else None
+
+
+"""
+PRE:  fn has a valid CFG. Instructions may define dst or be pure uses for example - (mov/binop/unop/br/ret).
+POST: Backward liveness per block (with successor live-outs) and removes pure instructions
+       whose destination is not live-out. Returns True iff any instruction was deleted.
+NOTE: Relies on Instr.has_side_effect() to keep it accurate when adding calls/stores.
+"""
 
 def dead_store_elim(fn: Function) -> bool:
     changed=False

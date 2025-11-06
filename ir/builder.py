@@ -2,6 +2,17 @@ from typing import List, Dict
 from ir.ir_types import *
 from ir.tac_adapter import FALLTHRU
 
+"""
+PRE:  linear is a list of IR Instr (may include 'label'). No block structure yet.
+POST: Returns a Function with basic blocks built and terminators enforced:
+      - Every block ends in br/jmp/ret
+      - Implicit fallthroughs are replaced with explicit jmp
+      - FALLTHRU in br is resolved to the next block label
+      - CFG (succ/pred) is computed; succ is successor and pred is predecessor
+NOTE: A synthetic '_entry' block is created if the first item is not a label.
+
+"""
+
 def linear_to_blocks(func_name: str, linear: List[Instr]) -> Function:
     blocks: List[Block] = []
     label_to_block: Dict[str, Block] = {}
@@ -48,6 +59,7 @@ def linear_to_blocks(func_name: str, linear: List[Instr]) -> Function:
     
 
     # Resolve Fallthru
+    # Resolve FALLTHRU to the physical next block label to remove implicit fallthrough.
 
     for i, b in enumerate(blocks):
         if not b.instrs: 

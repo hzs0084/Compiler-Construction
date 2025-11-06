@@ -1,6 +1,8 @@
 from  typing import Dict, List
 from ir.ir_types import Instr, Var, Const, Function
 
+# Follows alias chain x->y->z to return the ultimate representative Var.
+
 def _root(v: Var, env: Dict[str, str]) -> Var:
     # Followw chains x -> y -> z to the end
 
@@ -16,12 +18,24 @@ def _subst_val(val, env: Dict[str, str]):
         return _root(val, env)
     return val  # Const or None
 
+# Removes `dst_name` from env and any alias that points to `dst_name` (breaks chains).
+
 def _kill(env: Dict[str, str], dst_name: str):
     # kill dst's own mapping and any mapping that points to dst
     env.pop(dst_name, None)
     to_del = [k for k, v in env.items() if v == dst_name]
     for k in to_del:
         env.pop(k, None)
+
+"""
+PRE:  fn has valid blocks/CFG. Instructions include mov/binop/unop/br/jmp/ret.
+POST: Local (per-block) copy propagation:
+       - Tracks y = x aliases and substitutes uses (compressing chains)
+       - Kills aliases on redefinition and if any alias points to the redefined var
+       - Clears env on br/jmp/ret barriers
+       Returns True iff any substitution occurred.
+It does not cross block boundaries and does safe renaming only (no reordering).
+"""
 
 def copy_propagate_function(fn: Function) -> bool:
     changed = False

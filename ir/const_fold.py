@@ -23,6 +23,17 @@ def _un(op,a):
     if op=="!": return 0 if a else 1
     return None
 
+
+"""
+PRE:  fn is block-structured. Some operands may already be Const via const-prop.
+POST: Rewrites:
+      - binop(Const,Const) -> mov dst, Const(result)
+      - unop(Const)        -> mov dst, Const(result)
+      - br(Const)          -> jmp taken_target
+      Returns True if any rewrite occurred.
+NOTE: Division/mod by zero are NOT folded.
+"""
+
 def const_fold_function(fn: Function) -> bool:
     changed=False
     for b in fn.blocks:
