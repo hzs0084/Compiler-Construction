@@ -2,14 +2,17 @@ from collections import deque
 from typing import Set, Dict
 from ir.ir_types import *
 
-"""
-PRE:  fn has blocks and a valid CFG with a single entry block (with the label '_entry').
-POST: Removes blocks not reachable from entry via succ edges and rebuilds CFG.
-      Returns True if any block was deleted.
-NOTE: Run after const-fold so `br Const` -> `jmp` exposes unreachable arms.
-"""
+
 
 def drop_unreachable(fn: Function) -> bool:
+
+    """
+    PRE:  fn has blocks and a valid CFG with a single entry block (with the label '_entry').
+    POST: Removes blocks not reachable from entry via succ edges and rebuilds CFG.
+        Returns True if any block was deleted.
+    NOTE: Run after const-fold so `br Const` -> `jmp` exposes unreachable arms.
+    """
+
     if not fn.blocks: return False
     start = fn.blocks[0].label
     seen:set[str]=set()
@@ -52,9 +55,9 @@ NOTE: Relies on Instr.has_side_effect() to keep it accurate when adding calls/st
 
 def dead_store_elim(fn: Function) -> bool:
     changed=False
-    # simple per-block backward sweep using succ live-out (one pass is fine for now)
+    # simple per-block backward sweep using succ live-out 
     live_out:Dict[str,set[str]]={b.label:set() for b in fn.blocks}
-    # a couple of iterations is enough here to keep it simple
+
     for _ in range(3):
         for b in reversed(fn.blocks):
             out=set()
