@@ -2,6 +2,7 @@
 import re
 from typing import List, Tuple
 from ir.ir_types import *
+from ir.pretty import dump_blocks
 
 # TAC -> IR 
 
