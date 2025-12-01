@@ -63,10 +63,10 @@ class Parser:
 
     # entry
 
-    """
-    Program -> FunctionDecLList
-    """
     def parse(self) -> AST.Program:
+        """
+        Program -> FunctionDecLList
+        """
         functions = []
 
         # require at least one function
@@ -80,11 +80,11 @@ class Parser:
 
     # functions & blocks
 
-    """
-    Function -> Type ID () Block
-    """
     def _function(self) -> AST.Function:
-
+        
+        """
+        Function -> Type ID () Block
+        """
         # need the position of the keyword 'int'
         start_tok = self._current()
         self._expect(lex.TokenKind.KEYWORD, "int", msg= "function must start with 'int'")
@@ -107,7 +107,6 @@ class Parser:
         Block -> '{' '}'
         Starting with empty blocks
         """
-
         self._expect(lex.TokenKind.PUNCT, "{",msg= "expected '{' to start block")
         self._expect(lex.TokenKind.PUNCT, "}",msg= "expected '}' to start block")
 
@@ -123,6 +122,7 @@ class Parser:
         inside a block, we can expect one or more items so add it to the list of items
         while it's not the end with } or at the end keep appending if it's declaration or a statement
         """
+
         self._expect(lex.TokenKind.PUNCT, "{",msg= "expected '{' to start block")
         items: list[AST.VarDecl | AST.Stmt] = []
         while not self._check(lex.TokenKind.PUNCT, "}") and not self._at_end():
@@ -144,6 +144,7 @@ class Parser:
         names now start the while loop for multiple decl that would be separated by a comma
         expect to end with the ; declaration
         """
+
         self._expect(lex.TokenKind.KEYWORD, "int", msg= "declaration must start with 'int'")
         names: list[str] = []
         poss: list[tuple[int,int]] = []
@@ -180,7 +181,9 @@ class Parser:
         return AST.Return(expr)
 
     def _if_stmt(self) -> AST.If:
+        
         # IfStmt → "if" "(" Expression ")" Block [ "else" Block ]
+
         self._expect(lex.TokenKind.KEYWORD, "if")
         self._expect(lex.TokenKind.PUNCT, "(", "expected '(' after the if statement")
         cond = self._expression()
@@ -193,7 +196,9 @@ class Parser:
 
 
     def _while_stmt(self) -> AST.While:
+        
         # "while" "(" Expression ")" Block
+
         self._expect(lex.TokenKind.KEYWORD, "while")
         self._expect(lex.TokenKind.PUNCT, "(", "expected '(' after while")
         cond = self._expression()
@@ -203,7 +208,9 @@ class Parser:
 
 
     def _expr_stmt(self) -> AST.ExprStmt:
+        
         # Expression ";"
+
         expr = self._expression()
         self._expect(lex.TokenKind.PUNCT, ";", msg="expected ';' after expression")
         return AST.ExprStmt(expr)
@@ -215,6 +222,7 @@ class Parser:
         #return self._additive()
 
     def _assignment(self) -> AST.Expr:
+        
         # Assignment -> id "=" Assignment | LogicalOr
 
         if self._check(lex.TokenKind.IDENT) and self._peek_is_equals():
@@ -225,7 +233,9 @@ class Parser:
         return self._logical_or()
 
     def _logical_or(self) -> AST.Expr:
+        
         # LogicalOr → LogicalAnd { "||" LogicalAnd }
+
         node = self._logical_and()
         while self._match(lex.TokenKind.OP, "||"):
             rhs = self._logical_and()
@@ -233,7 +243,9 @@ class Parser:
         return node
 
     def _logical_and(self) -> AST.Expr:
+        
         # LogicalAnd → Equality { "&&" Equality }
+
         node = self._equality()
         while self._match(lex.TokenKind.OP, "&&"):
             rhs = self._equality()
@@ -241,7 +253,9 @@ class Parser:
         return node
 
     def _equality(self) -> AST.Expr:
+        
         # Equality → Relational { ("==" | "!=") Relational }
+
         node = self._relational()
         while True:
             if self._match(lex.TokenKind.OP, "=="):
@@ -255,7 +269,9 @@ class Parser:
         return node
 
     def _relational(self) -> AST.Expr:
+        
         # Relational → Additive { ("<" | "<=" | ">" | ">=") Additive }
+
         node = self._additive()
         while True:
             if self._match(lex.TokenKind.OP, "<"):
@@ -289,6 +305,7 @@ class Parser:
         return node
 
     def _multiplicative(self) -> AST.Expr:
+        
         node = self._unary()
         while True:
             if self._match(lex.TokenKind.OP, "*"):
@@ -305,6 +322,7 @@ class Parser:
         return node
     
     def _unary(self) -> AST.Expr:
+        
         if self._match(lex.TokenKind.OP, "!"):
             return AST.Unary("!", self._unary())
         if self._match(lex.TokenKind.OP, "-"):
@@ -314,6 +332,7 @@ class Parser:
         return self._primary()
 
     def _primary(self) -> AST.Expr:
+        
         if self._match(lex.TokenKind.PUNCT, "("):
             expr = self._expression()
             self._expect(lex.TokenKind.PUNCT, ")", msg="expected ')'")

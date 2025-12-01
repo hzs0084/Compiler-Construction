@@ -8,6 +8,11 @@ from ir.algebra import algebra_simplify_function
 
 
 def optimize_function(fn, opt_level: int = 0):
+
+    # no optimization
+    if opt_level == 0:
+        return
+
     MAX_OUTER = 8
     for _ in range(MAX_OUTER):
         changed = False

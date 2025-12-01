@@ -1,7 +1,7 @@
 # Ref: https://hegden.github.io/cs323/homeworks/PA4.pdf
 #https://engineering.purdue.edu/~milind/ece468/2012fall/ps-3-sol.pdf
 
-
+from abstract_syntax_tree import *
 import abstract_syntax_tree as AST
 
 class TACEmitter:
@@ -60,7 +60,7 @@ class TACEmitter:
     # look at the shape of the statement and use the right logic based on that
 
     def _gen_stmt(self, stmt: AST.Stmt) -> None:
-        from abstract_syntax_tree import Return, ExprStmt, If, While, Block
+
         if isinstance(stmt, Return):
             v = self._gen_expr(stmt.expr)
             self.emit(f"return {v}")
@@ -113,6 +113,7 @@ class TACEmitter:
 
     # If the first part already decides the answer, don’t even look at the second part.
     def _gen_logical_or(self, left_expr: AST.Expr, right_expr: AST.Expr) -> str:
+        
         #   result = (left || right) as 0/1 with short-circuit
         l = self._as_bool(self._gen_expr(left_expr))
         result = self.new_temp()
@@ -127,6 +128,7 @@ class TACEmitter:
         return result
     
     def _gen_logical_and(self, left_expr: AST.Expr, right_expr: AST.Expr) -> str:
+        
         #   result = (left && right) as 0/1 with short-circuit
         l = self._as_bool(self._gen_expr(left_expr))
         result = self.new_temp()
@@ -145,7 +147,7 @@ class TACEmitter:
     # To compute an expression, compute smaller pieces, store results in temp variables, and combine.
 
     def _gen_expr(self, expr: AST.Expr) -> str:
-        from abstract_syntax_tree import IntLit, Var, Unary, Binary, Assign
+
         if isinstance(expr, IntLit):
             return str(expr.value)
         if isinstance(expr, Var):
@@ -186,6 +188,7 @@ class TACEmitter:
 # Make an emitter and ask it to translate the whole program.
 
 def generate_tac(program: AST.Program) -> list[str]:
+    
     """
     returns a list of TAC lines.
     """

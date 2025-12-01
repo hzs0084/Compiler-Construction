@@ -76,8 +76,6 @@ class Binary(Expr):
     left: Expr
     right: Expr
 
-# print something here to debuggin purposes
-
 # https://github.com/asottile/astpretty
 
 def pretty(node, indent: int = 0) -> str:
@@ -117,5 +115,4 @@ def pretty(node, indent: int = 0) -> str:
 
 """
 Ref for dataclass: https://stackoverflow.com/questions/47955263/what-are-data-classes-and-how-are-they-different-from-common-classes
-
 """

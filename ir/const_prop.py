@@ -7,17 +7,20 @@ def _const_of(v: Value, env: Dict[str, Const]) -> Value:
         return c if c is not None else v
     return v # already constant
 
-"""
-PRE:  fn has valid blocks/CFG. Operands are Const or Var and no SSA required.
-POST: Performs local (per-block) forward constant/alias propagation:
-      - Substitutes known Const and y->x aliases into uses
-      - Updates `ret` BEFORE clearing the env so `return t` can become `return Const`
-      - Clears env at control-flow barriers (br/jmp/ret)
-      Returns True if any substitution was made.
-"""
 
 
 def const_propagate_function(fn: Function) -> bool:
+
+    """
+    PRE:  fn has valid blocks/CFG. Operands are Const or Var and no SSA required.
+    POST: Performs local (per-block) forward constant/alias propagation:
+        - Substitutes known Const and y->x aliases into uses
+        - Updates `ret` BEFORE clearing the env so `return t` can become `return Const`
+        - Clears env at control-flow barriers (br/jmp/ret)
+        Returns True if any substitution was made.
+
+    """
+    
     changed = False
     for b in fn.blocks: # 
         env: Dict[str, Const] = {}

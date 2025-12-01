@@ -3,6 +3,7 @@ from ir.ir_types import Instr, Var, Const, Function
 
 # Follow alias chain x->y->z; stop on cycles.
 # Follow alias chain x->y->z; stop on cycles; compress path on the way back.
+
 def _root(v: Var, env: Dict[str, str]) -> Var:
     name = v.name
     seen: list[str] = []
@@ -47,6 +48,7 @@ def _same_val(v1, v2) -> bool:
     return False
 
 def copy_propagate_function(fn: Function) -> bool:
+    
     """
     PRE:  fn has valid blocks/CFG. Instructions include mov/binop/unop/br/jmp/ret.
     POST: Local (per-block) copy propagation:

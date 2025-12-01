@@ -6,13 +6,14 @@ import argparse
 import os
 import sys
 import lexer as lex
-from errors import LexerError, ParserError
+from errors import *
 from parser import Parser
 from tac import generate_tac
 from ir.tac_adapter import tac_to_linear_ir, ir_to_tac
 from ir.builder import linear_to_blocks
 from ir.pipeline import optimize_function
 from ir.pretty import dump_blocks
+from codegen.pseudo_x86 import emit_function as emit_pseudo_x86
 
 def main():
 
@@ -44,6 +45,10 @@ def main():
                             help='Include CFG successors in --dump-blocks output')
     arg_parser.add_argument('--dump-blocks-after', action='store_true',
                             help='Print basic blocks after optimization')
+    
+        
+    arg_parser.add_argument("--emit-pseudo-x86", action="store_true",
+                        help="Emit human-readable Intel-style pseudo assembly (signed-only, virtual regs).")
 
 
 
@@ -73,8 +78,6 @@ def main():
     except LexerError as e:
         print(f"{e}")
         sys.exit(1)     # should prevent the unbound local error
-
-    # i will add better error handling here later
 
     if args.lexer:
         for tok in tokens:
@@ -132,25 +135,6 @@ def main():
     if args.tac:
         tac_lines = generate_tac(program_ast)
 
-        # # Convert TAC -> IR, optimize, IR -> TAC
-        # from ir.tac_adapter import tac_to_linear_ir, ir_to_tac
-        # from ir.builder import linear_to_blocks
-        # from ir.pipeline import optimize_function
-
-        # # get function name for header (your TAC header has it)
-        # func_name = "main"  # or parse it from the "# function ..." comment if you prefer
-        # linear_ir, header = tac_to_linear_ir(func_name, tac_lines)
-        # fn = linear_to_blocks(func_name, linear_ir)
-
-
-        # optimize_function(fn, opt_level=args.opt_level)
-
-        # # if args.opt_level >= 1:
-        # #     optimize_function(fn)
-
-        # tac_lines = ir_to_tac(fn, header)
-        # print("\n".join(tac_lines))
-
         linear_ir, header = tac_to_linear_ir("main", tac_lines)
         fn = linear_to_blocks("main", linear_ir)
 
@@ -162,10 +146,19 @@ def main():
         if args.dump_blocks_after:
             print(dump_blocks(fn, show_cfg=args.dump_cfg))
 
-        tac_lines = ir_to_tac(fn, header)
-        print("\n".join(tac_lines))
+        if args.emit_pseudo_x86:
+            print(emit_pseudo_x86(fn))
+        else:
+            tac_lines = ir_to_tac(fn, header)
+            print("\n".join(_strip_tac_comments(tac_lines)))
 
     print("\n--- End ---\n")
+
+def _strip_tac_comments(lines: list[str]) -> list[str]:
+    
+    # Hide only the header comments from the printed TAC
+    return [ln for ln in lines if not (ln.startswith("# function") or ln.startswith("# decl"))]
+
 
 if __name__ == "__main__":
     main()

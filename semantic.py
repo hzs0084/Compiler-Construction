@@ -1,6 +1,7 @@
 from typing import *
 import abstract_syntax_tree as AST
 from errors import SemanticError
+from abstract_syntax_tree import Return, ExprStmt, If, While, Block
 
 class Scope:
     def __init__(self, parent: Optional["Scope"] = None):
@@ -62,7 +63,7 @@ def analyze_block(block: AST.Block, scope: Scope) -> None:
             pass
 
 def analyze_stmt(stmt: AST.Stmt, scope: Scope) -> None:
-    from abstract_syntax_tree import Return, ExprStmt, If, While, Block
+
     if isinstance(stmt, Return):
         analyze_expr(stmt.expr, scope)
     elif isinstance(stmt, ExprStmt):

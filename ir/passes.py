@@ -4,7 +4,8 @@ from ir.ir_types import Function
 from ir.const_prop import const_propagate_function
 from ir.const_fold import const_fold_function
 from ir.dce import drop_unreachable, dead_store_elim
-# Only import these if you’ve created them
+
+# Only import these if these are working now
 try:
     from ir.copy_prop import copy_propagate_function
 except ImportError:

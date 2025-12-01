@@ -1,5 +1,5 @@
 # ir/pretty.py
-from ir.ir_types import Function, Instr, Const, Var
+from ir.ir_types import *
 
 def _sv(v):
     if v is None: return ""

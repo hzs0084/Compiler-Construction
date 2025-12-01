@@ -1,6 +1,7 @@
 import abstract_syntax_tree as AST
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
+from abstract_syntax_tree import If, While, Block
 
 # Rows = (fname, ftype, begins, ends, varname, vartype)
 Row = Tuple[str, str, str, str, str, str]  
@@ -13,7 +14,7 @@ class VarRow:
     scope: str
     decl_at: str
 
-#
+
 def build_function_rows(program: AST.Program) -> List[Row]:
     rows: List[Row] = []
     for fn in program.functions:
@@ -51,6 +52,7 @@ def build_variable_rows(program: AST.Program) -> List[VarRow]:
 
 
 def format_func_table(filename: str, rows: List[Row]) -> str:
+    
     # column headers
     headers = [
         "nameOfFunctions",
@@ -64,6 +66,7 @@ def format_func_table(filename: str, rows: List[Row]) -> str:
     return _format_table(headers, rows, title=filename)
 
 def format_var_table(filename: str, rows: List[VarRow]) -> str:
+    
     headers = ["function", "name", "type", "scopeLevel", "declared_at"]
     raw: List[Tuple[str, str, str, str, str]] = [
         (r.func, r.name, r.typ, str(r.scope), r.decl_at) for r in rows
@@ -90,7 +93,7 @@ def _collect_vars_in_block(func_name: str, block: AST.Block, scope_level: int, o
             _descend_stmt(func_name, item, scope_level, out)
 
 def _descend_stmt(func_name: str, stmt: AST.Stmt, scope_level: int, out: List[VarRow]) -> None:
-    from abstract_syntax_tree import If, While, Block
+    
     if isinstance(stmt, If):
         _collect_vars_in_block(func_name, stmt.then_branch, scope_level + 1, out)
         if stmt.else_branch:

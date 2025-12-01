@@ -54,7 +54,8 @@ def _def(ins) -> str | None:
     return None
 
 def dead_store_elim(fn) -> bool:
-    # ---- Phase A: dataflow to compute live_in/live_out ----
+    
+    # dataflow to compute live_in/live_out 
     blocks = fn.blocks
     succ = fn.succ  # dict: label -> [succ labels]
     live_in: dict[str, set[str]]  = {b.label: set() for b in blocks}
@@ -102,7 +103,7 @@ def dead_store_elim(fn) -> bool:
                 live_in[b.label] = new_in
                 changed = True
 
-    # ---- Phase B: per-block backward sweep using live_out as seed ----
+    #  per-block backward sweep using live_out as seed 
     any_removed = False
     for b in blocks:
         live = set(live_out[b.label])   # seed from successors

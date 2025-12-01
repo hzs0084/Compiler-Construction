@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Union, Dict
 
 
-
-
 # Values
 @dataclass
 class Const: value: int
@@ -30,14 +28,15 @@ class Instr:
     # for labels
     label: Optional[str] = None
 
-    """
-    # PRE:  self is a well-formed IR instruction.
-    # POST: Returns True if this instruction must never be removed by DCE
-    #       because it has externally visible side effects.
-    # NOTE: Currently returns False for all and when adding `call`/`store`/I/O,
-    #       update this to return True for those kinds.
-    """
     def has_side_effect(self) -> bool:
+
+        """
+        # PRE:  self is a well-formed IR instruction.
+        # POST: Returns True if this instruction must never be removed by DCE
+        #       because it has externally visible side effects.
+        # NOTE: Currently returns False for all and when adding `call`/`store`/I/O,
+        #       update this to return True for those kinds.
+        """
         # later add "store"/"call" here
         return False
 

@@ -11,12 +11,14 @@ def _recompute_preds(fn: Function) -> Dict[str, Set[str]]:
     return preds
 
 def fuse_straightline(fn: Function) -> bool:
+    
     """
     PRE:  fn has valid blocks/CFG (one terminator per block).
     POST: Repeatedly fuse B -> S when B ends with `jmp S` and S has exactly one
           predecessor (B). Returns True iff any fusion happened.
     NOTE: Rebuilds CFG after structural changes.
     """
+    
     changed = False
     # Make sure succ/pred are up-to-date
     build_cfg(fn)
