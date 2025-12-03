@@ -1,4 +1,3 @@
-# Human-readable Intel-style pseudo-assembly only
 # Signed-only and minimal instruction set with virtual registers for temps.
 from dataclasses import dataclass
 from typing import Dict, List
@@ -8,15 +7,24 @@ from ir.ir_types import Function, Instr, Var, Const
 
 @dataclass
 class VRegs:
+    """
+    next_id is the next virtual register index to assign (R1, R2, …)
+    by_temp is map from temp name (e.g., "t3") to its virtual register (e.g., "R2")
+    cmp_seq is a counter to make fresh label names for tiny true/false
+    """
     next_id: int = 1
     by_temp: Dict[str, str] = None
-    cmp_seq: int = 0  # per-function sequence for comparison/boolean labels
+    cmp_seq: int = 0  
 
     def __post_init__(self):
         if self.by_temp is None:
             self.by_temp = {}
 
     def reg_of(self, temp_name: str) -> str:
+        
+        """
+        does this temp already have a register and if not then give it the next one
+        """
         r = self.by_temp.get(temp_name)
         if r is None:
             r = f"R{self.next_id}"
@@ -25,7 +33,7 @@ class VRegs:
         return r
     
     def fresh_cmp_labels(self):
-        """Return (true_label, end_label) with a monotonic, per-function id."""
+        """Return (true_label, end_label)."""
         self.cmp_seq += 1
         i = self.cmp_seq
         return (f"Lcmp{i}_true", f"Lcmp{i}_end")
@@ -34,6 +42,13 @@ def is_temp(v: Var) -> bool:
     return isinstance(v, Var) and v.name.startswith("t")
 
 def opnd(v, vregs: VRegs) -> str:
+
+    """
+    turns it into how we can write in assembly:
+    constants -> "42"
+    temps -> "R1", "R2", …
+    named variables -> "[x]" pretending it lives in some memory address
+    """
     if isinstance(v, Const):
         return str(v.value)
     if isinstance(v, Var):
@@ -43,6 +58,9 @@ def opnd(v, vregs: VRegs) -> str:
 # Emit helpers
 
 def ensure_in(acc: str, src, vregs: VRegs, out: List[str]) -> str:
+
+    """ makes sure that src is in a register so we can work on it """
+
     s = opnd(src, vregs)
     # If it's already a virtual reg (Rk) or special RAX/RDX, return name
     if s.startswith("R") or s in ("RAX", "RDX"):
@@ -51,6 +69,13 @@ def ensure_in(acc: str, src, vregs: VRegs, out: List[str]) -> str:
     return acc
 
 def emit_mov(dst, a, vregs: VRegs, out: List[str]):
+
+    """
+    copy a into dst
+    if the dst is a temp -> mov R?, a
+    if the dst is named var -> mov [name], a
+    """
+
     # temps -> Rk, named vars -> [name]
     if isinstance(dst, Var) and is_temp(dst):
         out.append(f"mov  {vregs.reg_of(dst.name)}, {opnd(a, vregs)}")
@@ -60,6 +85,14 @@ def emit_mov(dst, a, vregs: VRegs, out: List[str]):
         raise TypeError("mov dst must be a Var")
 
 def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
+
+    """
+    does math and comparisions
+    it makes a tiny bridge so start with dst = 0, compare a and b
+    jump to 'true' part to do dst = 1 then jump to end
+    result is 0 or 1
+    """
+
     #  Comparisons first: materialize 0/1 WITHOUT preloading 'a' 
     comp_jcc = {
         "==": "je", "!=": "jne",
@@ -86,6 +119,10 @@ def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
         out.append(f"{end_l}:")
         return
 
+
+    """
+    the answer must go into RAX, and idiv needs RAX ready
+    """
     # Division: handle BEFORE any preload
     if op == "/":  # signed division only
         if isinstance(dst, Var) and is_temp(dst):
@@ -97,7 +134,6 @@ def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
 
         a_src = opnd(a, vregs)
         out.append(f"mov  RAX, {a_src}")
-        out.append("cqo")
         out.append(f"mov  R2, {opnd(b, vregs)}")
         out.append("idiv R2")
         if dst_where != "RAX":
@@ -107,6 +143,7 @@ def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
     if op == "%":
         raise NotImplementedError("Modulo (%) is not supported yet (by design).")
 
+    
     # Arithmetic ops: preload 'a' then op
     if isinstance(dst, Var) and is_temp(dst):
         dst_where = vregs.reg_of(dst.name)
@@ -135,6 +172,11 @@ def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
     else:
         raise TypeError("binop dst must be Var")
 
+
+    """
+    put 'a' in a working register, do the math with b, put result in dst
+    """
+
     if op == "+":
         out.append(f"add  {acc}, {opnd(b, vregs)}")
         if acc != dst_where:
@@ -155,6 +197,13 @@ def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
 
 
 def emit_unop(dst, op, a, vregs: VRegs, out: List[str]):
+
+    """
+    one input operations:
+    +a -> just copy a
+    -a -> do 0 - a
+    '!a' -> another tiny bridge start dst = 0 if a == 0 jump to set dst = 1
+    """
     if not isinstance(dst, Var):
         raise TypeError("unop dst must be Var")
 
@@ -190,10 +239,8 @@ def emit_unop(dst, op, a, vregs: VRegs, out: List[str]):
 def emit_br(cond, tlabel: str, flabel: str, next_label: str, vregs: VRegs, out: List[str]):
     
     """
-    Branch lowering with a tiny fall-through heuristic:
-      - If next block is flabel: emit 'cmp; jne T' and fall through to F (no jmp).
-      - Else if next block is tlabel: invert sense to fall through to T (emit 'cmp; je F').
-      - Else: emit 'cmp; jne T' and 'jmp F'.
+    walk left or right based on a condition and
+    if the next block is the false path, we don’t draw an extra jump just fall through
     """
 
     left = ensure_in("R5", cond, vregs, out)
@@ -208,6 +255,10 @@ def emit_br(cond, tlabel: str, flabel: str, next_label: str, vregs: VRegs, out: 
         out.append(f"jmp  {flabel}")
 
 def emit_instr(ins: Instr, next_blk_label: str, vregs: VRegs, out: List[str]):
+
+    """
+    looks at the instruction kind and calls the right drawer (label, mov, binop, unop, branch, jump, return)
+    """
     k = ins.kind
     if k == "label":
         out.append(f"{ins.label}:")
@@ -232,7 +283,7 @@ def emit_instr(ins: Instr, next_blk_label: str, vregs: VRegs, out: List[str]):
     
 def _dedupe_adjacent(lines):
     
-    """Drop exact duplicate consecutive instructions (cosmetic peephole)."""
+    """if two identical mov lines are right next to each other, erase the extra one."""
 
     out = []
     last = None
@@ -244,38 +295,12 @@ def _dedupe_adjacent(lines):
         last = ln
     return out
 
-def _peephole_copies(lines):
-    out = []
-    alias = {}  # reg -> source it equals
-    for ln in lines:
-        s = ln.strip()
-        if s.startswith("mov") and "," in s:
-            dst, src = [x.strip() for x in s[4:].split(",", 1)]
-            # drop 'mov Rx, Rx'
-            if dst == src:
-                continue
-            # track simple reg->reg copies
-            if dst.startswith("R") and src.startswith("R"):
-                alias[dst] = alias.get(src, src)
-                out.append(f"mov  {dst}, {alias[dst]}")
-                continue
-            # any write to a reg breaks its alias
-            if dst.startswith("R"):
-                alias.pop(dst, None)
-        else:
-            # writes through ALU kill alias on the dest
-            if s[:3] in ("add", "sub", "imu"):  # imul
-                parts = s.split()
-                if len(parts) >= 2 and parts[1].endswith(","):
-                    dst = parts[1].rstrip(",")
-                    if dst.startswith("R"):
-                        alias.pop(dst, None)
-            elif s.startswith("ret"):
-                pass
-        out.append(ln)
-    return out
 
 def _peephole_ret_rax(lines):
+
+    """
+    if the last thing is mov R?, RAX and then ret R?, just do ret RAX
+    """
     if len(lines) >= 2:
         prev, last = lines[-2].strip(), lines[-1].strip()
         if prev.startswith("mov") and last.startswith("ret"):
@@ -292,11 +317,10 @@ def _peephole_ret_rax(lines):
 def emit_function(fn: Function) -> str:
     
     """
-    Produce human-readable Intel-style assembly:
-      - Temps -> R1.. virtual regs (first-use order)
-      - Named variables -> [name]
-      - Labels printed verbatim
-      - Signed division only (idiv), modulo not supported (yet)
+    print the block label
+    remembers the next block’s label (to help branches fall through nicely)
+    calls emit_instr for each instruction.
+    if nobody returned, it adds ret 0 at the end
     """
 
     out: List[str] = [f"function {fn.name}"]
@@ -314,7 +338,7 @@ def emit_function(fn: Function) -> str:
     if not any(i.kind == "ret" for b in fn.blocks for i in b.instrs):
         out.append("ret  0")
 
-    # cosmetic peephole by removing adjacent duplicate movs
+    # cosmetic touch by removing adjacent duplicate movs
     out[:] = _dedupe_adjacent(out)
     out[:] = _peephole_ret_rax(out)
 
