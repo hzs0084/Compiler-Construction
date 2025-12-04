@@ -1,7 +1,7 @@
 # Ref: https://hegden.github.io/cs323/homeworks/PA4.pdf
 #https://engineering.purdue.edu/~milind/ece468/2012fall/ps-3-sol.pdf
 
-from abstract_syntax_tree import *
+from abstract_syntax_tree import Return, ExprStmt, Block, If, While, IntLit, Var, Unary, Binary, Assign
 import abstract_syntax_tree as AST
 
 class TACEmitter:

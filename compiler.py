@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 import lexer as lex
-from errors import *
+from errors import LexerError, ParserError
 from parser import Parser
 from tac import generate_tac
 from ir.tac_adapter import tac_to_linear_ir, ir_to_tac

@@ -1,4 +1,4 @@
-from typing import *
+from typing import Optional, Dict
 import abstract_syntax_tree as AST
 from errors import SemanticError
 from abstract_syntax_tree import Return, ExprStmt, If, While, Block
