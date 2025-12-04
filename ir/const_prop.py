@@ -1,5 +1,5 @@
 from typing import Dict
-from ir.ir_types import *
+from ir.ir_types import Const, Var, Instr, Function, Value
 
 def _const_of(v: Value, env: Dict[str, Const]) -> Value:
     if isinstance(v, Var):
@@ -20,7 +20,7 @@ def const_propagate_function(fn: Function) -> bool:
         Returns True if any substitution was made.
 
     """
-    
+
     changed = False
     for b in fn.blocks: # 
         env: Dict[str, Const] = {}

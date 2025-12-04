@@ -1,7 +1,7 @@
 # ir/tac_adapter.py
 import re
 from typing import List, Tuple
-from ir.ir_types import *
+from ir.ir_types import Var, Const, Instr, Value, Function
 from ir.pretty import dump_blocks
 
 # TAC -> IR 
@@ -143,7 +143,7 @@ def ir_to_tac(fn: Function, header_comments: List[str]) -> List[str]:
     PRE:  fn has well-formed blocks/terminators and header_comments are optional leading lines.
     POST: Returns TAC-like strings for printing/debugging. One label per block is emitted.
     """
-    
+
     out: List[str] = []
     out.extend(header_comments)  # keep the "# function", "# decl ..." lines once
     seen_header = True

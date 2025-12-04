@@ -1,5 +1,5 @@
 from typing import List, Dict
-from ir.ir_types import *
+from ir.ir_types import Block, Instr, Function
 from ir.tac_adapter import FALLTHRU
 
 

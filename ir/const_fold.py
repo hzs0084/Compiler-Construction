@@ -1,4 +1,4 @@
-from ir.ir_types import *
+from ir.ir_types import Const, Function, Instr
 def _is_c(x): return isinstance(x, Const)
 
 def _bin(op,a,b):
