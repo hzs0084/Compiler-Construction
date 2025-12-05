@@ -2,6 +2,12 @@
 from dataclasses import dataclass
 from typing import Dict, List
 from ir.ir_types import Function, Instr, Var, Const
+from codegen.x86ir import (
+    Program, Imm, Reg, Mem, Label, LabelDef,
+    Mov, Add, Sub, IMul, Cmp, Idiv, Jcc, Jmp, Ret,
+    print_program,
+)
+from codegen.ra import allocate_registers_on_program
 
 # Virtual register naming
 
@@ -41,227 +47,187 @@ class VRegs:
 def is_temp(v: Var) -> bool:
     return isinstance(v, Var) and v.name.startswith("t")
 
-def opnd(v, vregs: VRegs) -> str:
-
+def opnd(v, vregs: VRegs):
     """
-    turns it into how we can write in assembly:
-    constants -> "42"
-    temps -> "R1", "R2", …
-    named variables -> "[x]" pretending it lives in some memory address
+    Map IR values to x86-IR operands:
+      Const -> Imm(42)
+      temp Var (tN) -> Reg("Rk")
+      named Var (x) -> Mem("x")
     """
     if isinstance(v, Const):
-        return str(v.value)
+        return Imm(v.value)
     if isinstance(v, Var):
-        return vregs.reg_of(v.name) if is_temp(v) else f"[{v.name}]"
+        if is_temp(v):
+            return Reg(vregs.reg_of(v.name))
+        else:
+            return Mem(v.name)
     raise TypeError(f"Unknown value type: {type(v)}")
+
 
 # Emit helpers
 
-def ensure_in(acc: str, src, vregs: VRegs, out: List[str]) -> str:
-
-    """ makes sure that src is in a register so we can work on it """
+def ensure_in(acc_name: str, src, vregs: VRegs, out: Program) -> Reg:
+    
+    """
+    Ensure 'src' is available in a register; if not, move it into acc_name.
+    Returns a Reg operand.
+    """
 
     s = opnd(src, vregs)
-    # If it's already a virtual reg (Rk) or special RAX/RDX, return name
-    if s.startswith("R") or s in ("RAX", "RDX"):
+    if isinstance(s, Reg):
         return s
-    out.append(f"mov  {acc}, {s}")
+    acc = Reg(acc_name)       # virtual register like "R3"
+    out.append(Mov(acc, s))   # mov  acc, s
     return acc
 
-def emit_mov(dst, a, vregs: VRegs, out: List[str]):
 
+def emit_mov(dst, a, vregs: VRegs, out: Program):
     """
-    copy a into dst
-    if the dst is a temp -> mov R?, a
-    if the dst is named var -> mov [name], a
+    dst temp  -> Mov(Reg("Rk"), opnd(a))
+    dst named -> Mov(Mem("x"),  opnd(a))
     """
-
-    # temps -> Rk, named vars -> [name]
     if isinstance(dst, Var) and is_temp(dst):
-        out.append(f"mov  {vregs.reg_of(dst.name)}, {opnd(a, vregs)}")
+        out.append(Mov(Reg(vregs.reg_of(dst.name)), opnd(a, vregs)))
     elif isinstance(dst, Var):
-        out.append(f"mov  [{dst.name}], {opnd(a, vregs)}")
+        out.append(Mov(Mem(dst.name), opnd(a, vregs)))
     else:
         raise TypeError("mov dst must be a Var")
 
-def emit_binop(dst, a, op, b, vregs: VRegs, out: List[str]):
 
-    """
-    does math and comparisions
-    it makes a tiny bridge so start with dst = 0, compare a and b
-    jump to 'true' part to do dst = 1 then jump to end
-    result is 0 or 1
-    """
-
-    #  Comparisons first: materialize 0/1 WITHOUT preloading 'a' 
-    comp_jcc = {
-        "==": "je", "!=": "jne",
-        "<": "jl", "<=": "jle",
-        ">": "jg", ">=": "jge",
-    }
+def emit_binop(dst, a, op, b, vregs: VRegs, out: Program):
+    # comparisons -> booleanize (0/1)
+    comp_jcc = {"==":"je","!=":"jne","<":"jl","<=":"jle",">":"jg",">=":"jge"}
     if op in comp_jcc:
+        # where do we store the 0/1?
         if isinstance(dst, Var) and is_temp(dst):
-            dst_where = vregs.reg_of(dst.name)
+            dst_where = Reg(vregs.reg_of(dst.name))
         elif isinstance(dst, Var):
-            dst_where = f"[{dst.name}]"
+            dst_where = Mem(dst.name)
         else:
             raise TypeError("binop dst must be Var")
-        true_l = f".Ltrue_{id(dst)}"
-        end_l  = f".Lend_{id(dst)}"
-        true_l, end_l = vregs.fresh_cmp_labels()
-        out.append(f"mov  {dst_where}, 0")
+
+        tlabel, endlabel = vregs.fresh_cmp_labels()
+        # dst = 0
+        out.append(Mov(dst_where, Imm(0)))
+        # cmp a, b
         left = ensure_in("R3", a, vregs, out)
-        out.append(f"cmp  {left}, {opnd(b, vregs)}")
-        out.append(f"{comp_jcc[op]} {true_l}")
-        out.append(f"jmp  {end_l}")
-        out.append(f"{true_l}:")
-        out.append(f"mov  {dst_where}, 1")
-        out.append(f"{end_l}:")
+        out.append(Cmp(left, opnd(b, vregs)))
+        # jcc true; jmp end; true: dst=1; end:
+        out.append(Jcc(comp_jcc[op], Label(tlabel)))
+        out.append(Jmp(Label(endlabel)))
+        out.append(LabelDef(Label(tlabel)))
+        out.append(Mov(dst_where, Imm(1)))
+        out.append(LabelDef(Label(endlabel)))
         return
 
-
-    """
-    the answer must go into RAX, and idiv needs RAX ready
-    """
-    # Division: handle BEFORE any preload
-    if op == "/":  # signed division only
+    # division (signed: idiv). Result lives in RAX, so move a -> RAX, divisor in a reg, idiv
+    if op == "/":
         if isinstance(dst, Var) and is_temp(dst):
-            dst_where = vregs.reg_of(dst.name)
+            dst_where = Reg(vregs.reg_of(dst.name))
         elif isinstance(dst, Var):
-            dst_where = f"[{dst.name}]"
+            dst_where = Mem(dst.name)
         else:
             raise TypeError("binop dst must be Var")
-
+        # mov RAX, a
         a_src = opnd(a, vregs)
-        out.append(f"mov  RAX, {a_src}")
-        out.append(f"mov  R2, {opnd(b, vregs)}")
-        out.append("idiv R2")
-        if dst_where != "RAX":
-            out.append(f"mov  {dst_where}, RAX")
+        out.append(Mov(Reg("RAX"), a_src))
+        # divisor must be a reg
+        divreg = ensure_in("R2", b, vregs, out)
+        out.append(Idiv(divreg))
+        # move result if needed
+        if not (isinstance(dst_where, Reg) and dst_where.name == "RAX"):
+            out.append(Mov(dst_where, Reg("RAX")))
         return
 
     if op == "%":
         raise NotImplementedError("Modulo (%) is not supported yet (by design).")
 
-    
-    # Arithmetic ops: preload 'a' then op
+    # arithmetic +, -, * (two-operand: dst := dst op src)
+    # Choose accumulator 
     if isinstance(dst, Var) and is_temp(dst):
-        dst_where = vregs.reg_of(dst.name)
+        dst_where = Reg(vregs.reg_of(dst.name))
         acc = dst_where
         a_src = opnd(a, vregs)
-        if a_src != acc:
-            out.append(f"mov  {acc}, {a_src}")
+        if not (isinstance(a_src, Reg) and a_src.name == acc.name):
+            out.append(Mov(acc, a_src))
     elif isinstance(dst, Var):
-        dst_where = f"[{dst.name}]"
-        acc = "R1"
-        out.append(f"mov  {acc}, {opnd(a, vregs)}")
-    else:
-        raise TypeError("binop dst must be Var")
-    
-    #  Arithmetic ops: preload 'a' into an accumulator and operate in place
-    if isinstance(dst, Var) and is_temp(dst):
-        dst_where = vregs.reg_of(dst.name)
-        acc = dst_where
-        a_src = opnd(a, vregs)
-        if a_src != acc:
-            out.append(f"mov  {acc}, {a_src}")
-    elif isinstance(dst, Var):
-        dst_where = f"[{dst.name}]"
-        acc = "R1"
-        out.append(f"mov  {acc}, {opnd(a, vregs)}")
+        dst_where = Mem(dst.name)
+        acc = Reg("R1")
+        out.append(Mov(acc, opnd(a, vregs)))
     else:
         raise TypeError("binop dst must be Var")
 
-
-    """
-    put 'a' in a working register, do the math with b, put result in dst
-    """
-
+    # do the op
+    src_op = opnd(b, vregs)
     if op == "+":
-        out.append(f"add  {acc}, {opnd(b, vregs)}")
-        if acc != dst_where:
-            out.append(f"mov  {dst_where}, {acc}")
-        return
-    if op == "-":
-        out.append(f"sub  {acc}, {opnd(b, vregs)}")
-        if acc != dst_where:
-            out.append(f"mov  {dst_where}, {acc}")
-        return
-    if op == "*":
-        out.append(f"imul {acc}, {opnd(b, vregs)}")
-        if acc != dst_where:
-            out.append(f"mov  {dst_where}, {acc}")
-        return
-    # If the code comes  here with a non-arith, non-comp op:
-    raise NotImplementedError(f"Unsupported binop: {op}")
+        out.append(Add(acc, src_op))
+    elif op == "-":
+        out.append(Sub(acc, src_op))
+    elif op == "*":
+        out.append(IMul(acc, src_op))
+    else:
+        raise NotImplementedError(f"Unsupported binop: {op}")
+
+    # if destination is memory, store back
+    if isinstance(dst_where, Mem):
+        out.append(Mov(dst_where, acc))
 
 
-def emit_unop(dst, op, a, vregs: VRegs, out: List[str]):
-
-    """
-    one input operations:
-    +a -> just copy a
-    -a -> do 0 - a
-    '!a' -> another tiny bridge start dst = 0 if a == 0 jump to set dst = 1
-    """
+def emit_unop(dst, op, a, vregs: VRegs, out: Program):
     if not isinstance(dst, Var):
         raise TypeError("unop dst must be Var")
 
     if op == "+":
         emit_mov(dst, a, vregs, out)
         return
+
     if op == "-":
-        # no 'neg' to keep set minimal: 0 - a
         if is_temp(dst):
-            acc = vregs.reg_of(dst.name)
-            out.append(f"mov  {acc}, 0")
-            out.append(f"sub  {acc}, {opnd(a, vregs)}")
+            acc = Reg(vregs.reg_of(dst.name))
+            out.append(Mov(acc, Imm(0)))
+            out.append(Sub(acc, opnd(a, vregs)))
         else:
-            out.append(f"mov  R1, 0")
-            out.append(f"sub  R1, {opnd(a, vregs)}")
-            out.append(f"mov  [{dst.name}], R1")
+            acc = Reg("R1")
+            out.append(Mov(acc, Imm(0)))
+            out.append(Sub(acc, opnd(a, vregs)))
+            out.append(Mov(Mem(dst.name), acc))
         return
+
     if op == "!":
-        where = vregs.reg_of(dst.name) if (isinstance(dst, Var) and is_temp(dst)) else f"[{dst.name}]"
-        true_l, end_l = vregs.fresh_cmp_labels()   # deterministic labels
-        out.append(f"mov  {where}, 0")
+        where = Reg(vregs.reg_of(dst.name)) if is_temp(dst) else Mem(dst.name)
+        tlabel, endlabel = vregs.fresh_cmp_labels()
+        out.append(Mov(where, Imm(0)))
         left = ensure_in("R4", a, vregs, out)
-        out.append(f"cmp  {left}, 0")
-        out.append(f"je   {true_l}")   # not a is true when a == 0
-        out.append(f"jmp  {end_l}")
-        out.append(f"{true_l}:")
-        out.append(f"mov  {where}, 1")
-        out.append(f"{end_l}:")
+        out.append(Cmp(left, Imm(0)))
+        out.append(Jcc("je", Label(tlabel)))  # true when a==0
+        out.append(Jmp(Label(endlabel)))
+        out.append(LabelDef(Label(tlabel)))
+        out.append(Mov(where, Imm(1)))
+        out.append(LabelDef(Label(endlabel)))
         return
 
     raise NotImplementedError(f"Unsupported unop: {op}")
 
-def emit_br(cond, tlabel: str, flabel: str, next_label: str, vregs: VRegs, out: List[str]):
-    
-    """
-    walk left or right based on a condition and
-    if the next block is the false path, we don’t draw an extra jump just fall through
-    """
 
+def emit_br(cond, tlabel: str, flabel: str, next_label: str, vregs: VRegs, out: Program):
+    """
+    Compare cond with 0 and branch. If the next block is the false path,
+    fall through without an extra jump (cosmetic).
+    """
     left = ensure_in("R5", cond, vregs, out)
-    out.append(f"cmp  {left}, 0")
+    out.append(Cmp(left, Imm(0)))
     if next_label == flabel:
-        out.append(f"jne  {tlabel}")
-        # fall-through to false
+        out.append(Jcc("jne", Label(tlabel)))  # fall-through to false
     elif next_label == tlabel:
-        out.append(f"je   {flabel}")  # invert so  fall through to true
+        out.append(Jcc("je", Label(flabel)))   # invert, fall-through to true
     else:
-        out.append(f"jne  {tlabel}")
-        out.append(f"jmp  {flabel}")
+        out.append(Jcc("jne", Label(tlabel)))
+        out.append(Jmp(Label(flabel)))
 
-def emit_instr(ins: Instr, next_blk_label: str, vregs: VRegs, out: List[str]):
-
-    """
-    looks at the instruction kind and calls the right drawer (label, mov, binop, unop, branch, jump, return)
-    """
+def emit_instr(ins: Instr, next_blk_label: str, vregs: VRegs, out: Program):
     k = ins.kind
     if k == "label":
-        out.append(f"{ins.label}:")
+        out.append(LabelDef(Label(ins.label)))
     elif k == "mov":
         emit_mov(ins.dst, ins.a, vregs, out)
     elif k == "binop":
@@ -271,15 +237,19 @@ def emit_instr(ins: Instr, next_blk_label: str, vregs: VRegs, out: List[str]):
     elif k == "br":
         emit_br(ins.a, ins.tlabel, ins.flabel, next_blk_label, vregs, out)
     elif k == "jmp":
-        out.append(f"jmp  {ins.tlabel}")
+        out.append(Jmp(Label(ins.tlabel)))
     elif k == "ret":
-        # Human-readable pseudo-return
         if ins.a is None:
-            out.append("ret  0")
+            # real x86 returns don’t carry an operand
+            out.append(Ret())
         else:
-            out.append(f"ret  {opnd(ins.a, vregs)}")
+            # move return value into RAX, then ret
+            out.append(Mov(Reg("RAX"), opnd(ins.a, vregs)))
+            out.append(Ret())
+
     else:
         raise NotImplementedError(k)
+
     
 def _dedupe_adjacent(lines):
     
@@ -314,32 +284,32 @@ def _peephole_ret_rax(lines):
 
 # entrypoint
 
-def emit_function(fn: Function) -> str:
-    
+def emit_function(fn: Function, enable_ra: bool = False) -> str:
     """
-    print the block label
-    remembers the next block’s label (to help branches fall through nicely)
-    calls emit_instr for each instruction.
-    if nobody returned, it adds ret 0 at the end
+    Build object-level x86-IR, run register allocation, then pretty-print.
     """
-
-    out: List[str] = [f"function {fn.name}"]
+    prog: Program = []     # list[Instr] objects
     vregs = VRegs()
 
-    # print blocks in existing order and use next block label for fall-through
+    # Emit blocks in order
     for i, blk in enumerate(fn.blocks):
         if blk.label:
-            out.append(f"{blk.label}:")
+            prog.append(LabelDef(Label(blk.label)))
         next_label = fn.blocks[i+1].label if (i+1) < len(fn.blocks) and fn.blocks[i+1].label else ""
         for ins in blk.instrs:
-            emit_instr(ins, next_label, vregs, out)
+            emit_instr(ins, next_label, vregs, prog)
 
-    # if no explicit ret was seen, add a pseudo-ret
-    if not any(i.kind == "ret" for b in fn.blocks for i in b.instrs):
-        out.append("ret  0")
+    # Ensure there's a ret
+    if not any(isinstance(i, Ret) for i in prog):
+        prog.append(Ret())
 
-    # cosmetic touch by removing adjacent duplicate movs
-    out[:] = _dedupe_adjacent(out)
-    out[:] = _peephole_ret_rax(out)
+    # Register Allocation on objects
+    if enable_ra:
+        prog = allocate_registers_on_program(prog)
 
-    return "\n".join(out)
+    # Pretty print
+    lines = print_program(prog)
+    return "\n".join(["function " + fn.name] + lines)
+
+def emit_pseudo_x86(fn: Function, enable_ra: bool = False) -> str:
+    return emit_function(fn, enable_ra=enable_ra)

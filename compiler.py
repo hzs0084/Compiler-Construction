@@ -50,6 +50,8 @@ def main():
     arg_parser.add_argument("--emit-pseudo-x86", action="store_true",
                         help="Emit human-readable Intel-style pseudo assembly (signed-only, virtual regs).")
 
+    arg_parser.add_argument("--ra", action="store_true",
+                            help="Enable register allocation for pseudo-x86 output")
 
 
     args = arg_parser.parse_args()
@@ -147,7 +149,7 @@ def main():
             print(dump_blocks(fn, show_cfg=args.dump_cfg))
 
         if args.emit_pseudo_x86:
-            print(emit_pseudo_x86(fn))
+            print(emit_pseudo_x86(fn, enable_ra=args.ra))
         else:
             tac_lines = ir_to_tac(fn, header)
             print("\n".join(_strip_tac_comments(tac_lines)))

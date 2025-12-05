@@ -1,5 +1,5 @@
 from collections import deque
-from typing import set, dict
+from typing import Set, Dict
 from ir.ir_types import Function, Var, Instr
 from ir.builder import build_cfg
 
