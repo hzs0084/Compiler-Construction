@@ -21,7 +21,11 @@ class Mem:
 class Label:
     name: str
 
-Operand = Union[Imm, Reg, Mem]
+@dataclass
+class FrameRef:
+    offset: int  # negative (e.g., -8, -16, …)
+
+Operand = Union[Imm, Reg, Mem, FrameRef]
 
 # Instructions
 
@@ -75,6 +79,15 @@ class Jmp(Instr):
 class Ret(Instr):
     val: Optional[Operand] = None
 
+
+@dataclass 
+class Push(Instr): 
+    reg: Reg
+
+@dataclass
+class Pop(Instr):  
+    reg: Reg
+
 Program = List[Instr]
 
 # Pretty printer (Intel-like)
@@ -83,19 +96,29 @@ def _op(o: Operand) -> str:
     if isinstance(o, Imm):
         return str(o.value)
     if isinstance(o, Reg):
-        return o.name.lower() if o.name.startswith(("R", "RA", "RD")) else o.name
+        return o.name.lower()  # keep as is
     if isinstance(o, Mem):
         return f"[{o.name}]"
+    if isinstance(o, FrameRef):
+        k = -o.offset
+        return f"[rbp-{k}]" if k != 0 else "[rbp]"
     raise TypeError(o)
 
 def _lbl(l: Label) -> str:
     return l.name
 
+def fmt(op):
+    if isinstance(op, FrameRef):
+        k = -op.offset
+        return f"[rbp-{k}]" if k != 0 else "[rbp]"
+    # existing: Imm, Reg, Mem, Label, etc.
+
+
 def print_program(p: Program) -> List[str]:
     out: List[str] = []
     for ins in p:
         if isinstance(ins, LabelDef):
-            out.append(f"{_lbl(ins.label)}:")
+            out.append(f"{ins.label.name}:")
         elif isinstance(ins, Mov):
             out.append(f"mov  {_op(ins.dst)}, {_op(ins.src)}")
         elif isinstance(ins, Add):
@@ -109,12 +132,15 @@ def print_program(p: Program) -> List[str]:
         elif isinstance(ins, Idiv):
             out.append(f"idiv {_op(ins.src)}")
         elif isinstance(ins, Jcc):
-            out.append(f"{ins.cc} {_lbl(ins.target)}")
+            out.append(f"{ins.cc} {ins.target.name}")
         elif isinstance(ins, Jmp):
-            out.append(f"jmp  {_lbl(ins.target)}")
+            out.append(f"jmp  {ins.target.name}")
         elif isinstance(ins, Ret):
-                out.append("ret")
-                continue
+            out.append("ret")
+        elif isinstance(ins, Push):
+            out.append(f"push {_op(ins.reg)}")
+        elif isinstance(ins, Pop):
+            out.append(f"pop  {_op(ins.reg)}")
         else:
             raise NotImplementedError(type(ins))
     return out

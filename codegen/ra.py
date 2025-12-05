@@ -46,7 +46,7 @@ def successors(p: Program) -> Dict[int, List[int]]:
     succ = defaultdict(list)
     for i, ins in enumerate(p):
         nxt = i+1 if i+1 < len(p) else None
-        if isinstance(ins, (Mov,Add,Sub,IMul,Cmp,Idiv,LabelDef)):
+        if isinstance(ins, (Mov,Add,Sub,IMul,Cmp,Idiv,LabelDef, Push, Pop)):
             if nxt is not None: succ[i].append(nxt)
         elif isinstance(ins, Ret):
             pass
@@ -250,7 +250,7 @@ def rewrite_with_spills(p: Program, colors: Dict[str,str], spills: Set[str]) -> 
                     out.append(IMul(pdst, s_op))
             continue
 
-        if isinstance(ins, (Jcc, Jmp)):
+        if isinstance(ins, (Jcc, Jmp, Push, Pop)):
             out.append(ins); continue
 
         raise NotImplementedError(type(ins))
