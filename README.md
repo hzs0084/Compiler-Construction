@@ -167,7 +167,7 @@ python3 compiler.py --tac -O2 --dump-blocks-after input.c
 
 ## 5 Pseudo-x86 Output and Register Allocation
 
-To lower to Intel-stle pseudo-x86L
+To lower to Intel-style pseudo-x86L
 
 ```bash
 # Simple pseudo-x86 (virtual registers, no stack frame)
@@ -211,4 +211,3 @@ python3 compiler.py -O2 --emit-pseudo-x86 --frame stack --ra tests/codegen-x86/s
     - % is not wired all the way through code generation.
     - No real assembler or linker and output is pseudo-x86 and direct execution. 
 
-    
