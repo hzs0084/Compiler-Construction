@@ -25,8 +25,9 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
-      "args": ["-p", "testing_simple_c_programs/test6.c"],
-      "justMyCode": true
+      "args": ["-p", "tests/codegen-x86/a1.c"],
+      "justMyCode": true,
+      "stopOnEntry": false
     },
     {
       "name": "Debug: Lexer (test6.c)",
@@ -38,8 +39,22 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
-      "args": ["-l", "testing_simple_c_programs/test6.c"],
-      "justMyCode": true
+      "args": ["-l", "tests/codegen-x86/a1.c"],
+      "justMyCode": true,
+      "stopOnEntry": false
+    },
+    {
+      "name": "Debug: RA example",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/ra_debug_example.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "justMyCode": true,
+      "stopOnEntry": false
     }
   ],
   "inputs": [
@@ -47,7 +62,7 @@
       "id": "sourceFile",
       "type": "promptString",
       "description": "Path to .c file (relative to workspace)",
-      "default": "testing_simple_c_programs/test6.c"
+      "default": "tests/codegen-x86/a1.c"
     }
   ]
 }

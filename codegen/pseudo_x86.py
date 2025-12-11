@@ -17,7 +17,7 @@ class FrameLayout:
     size: int                     # positive, rounded for alignment
 
 def build_frame_layout(fn: Function) -> FrameLayout:
-    # collect locals (named Vars your TAC declared/used)
+    # collect locals (named Vars that TAC declared/used)
     names: list[str] = []
     seen = set()
     for blk in fn.blocks:
@@ -117,12 +117,15 @@ def ensure_in(acc_name: str, src, vregs: VRegs, out: Program, frame: FrameLayout
 
 def emit_mov(dst, a, vregs: VRegs, out: Program, frame: FrameLayout | None):
     """
-    dst temp  -> Mov(Reg("Rk"), opnd(a))
-    dst named -> Mov(Mem("x"),  opnd(a))
+    dst = a
+    - If dst is temp like t0, emit_mov uses VRegs to map it to a virtual register name like R1 and emits mov R1, <a-opnd>
+    - If dst is named variable like a, it uses opnd plus the FrameLayout to choose either a stack slot [rbp-8] in stack mode or a symbolic memory location [a] in non-stack mode, and emits mov [rbp-8], <a-opnd>
     """
     if isinstance(dst, Var) and is_temp(dst):
+        # temp: put a into the temp's virtual register
         out.append(Mov(Reg(vregs.reg_of(dst.name)), opnd(a, vregs, frame)))
     elif isinstance(dst, Var):
+        # named variable: put 'a' into it's own memory location
         out.append(Mov(opnd(dst, vregs, frame), opnd(a, vregs, frame)))
     else:
         raise TypeError("mov dst must be a Var")
@@ -132,7 +135,7 @@ def emit_binop(dst, a, op, b, vregs: VRegs, out: Program,frame: FrameLayout | No
     # comparisons -> booleanize (0/1)
     comp_jcc = {"==":"je","!=":"jne","<":"jl","<=":"jle",">":"jg",">=":"jge"}
     if op in comp_jcc:
-        # where do we store the 0/1?
+        
         if isinstance(dst, Var) and is_temp(dst):
             dst_where = Reg(vregs.reg_of(dst.name))
         elif isinstance(dst, Var):
@@ -421,8 +424,6 @@ def emit_function(fn: Function, enable_ra: bool = False, frame_mode: str = "off"
         if frame.size:
             prog.append(Sub(Reg("RSP"), Imm(frame.size)))  # sub rsp, frame.size
 
-  # sub rsp, frame.size
-
     # Emit blocks
     for i, blk in enumerate(fn.blocks):
         if blk.label:
@@ -444,14 +445,14 @@ def emit_function(fn: Function, enable_ra: bool = False, frame_mode: str = "off"
                 # replace with epilogue
                 if frame.size:
                     patched.append(Add(Reg("RSP"), Imm(frame.size)))  # add back
-                # leave is sugar for 'mov rsp, rbp; pop rbp'; we can do leave if you add it
-                patched.append(Pop(Reg("RBP")))                      # add Pop class, print "pop rbp"
+                # 'mov rsp, rbp; pop rbp'; 
+                patched.append(Pop(Reg("RBP")))                      # "pop rbp"
                 patched.append(Ret())
             else:
                 patched.append(ins)
         prog = patched
 
-    # RA (works on objects; Mem/FrameRef ok)
+    # RA 
     if enable_ra and frame_mode == "stack":
         prog = remap_spills_to_frame(prog, frame)
 
