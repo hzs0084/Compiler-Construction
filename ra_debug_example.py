@@ -1,7 +1,7 @@
 # ra_debug_example.py
 #
-# Tiny hand-written pseudo-x86 program so we can step through RA.
-# This matches the example we've been talking about:
+# Tiny hand-written pseudo-x86 program so can step through RA.
+# This matches the example've been talking about:
 #
 #   L0:
 #     mov R1, [a]
@@ -10,14 +10,14 @@
 #     mov RAX, R1
 #     ret
 #
-# We don't care about real [rbp-8] etc here, just that R1/R2/RAX are vregs.
+# don't care about real [rbp-8] etc here, just that R1/R2/RAX are vregs.
 
 from codegen.x86ir import Reg, Mem, Mov, Add, Label, LabelDef, Ret
 from codegen.ra import liveness, build_igraph, allocate_registers_on_program
 from codegen.x86ir import Program  # still useful as a *type*, not a constructor
 
 def make_example_program() -> Program:
-    # Program is just "list[Instr]" – so we build a normal list.
+    # Program is just "list[Instr]" – so build a normal list.
     p: Program = [
         LabelDef(Label("L0")),          # 0
         Mov(Reg("R1"), Mem("a")),       # 1: R1 = [a]

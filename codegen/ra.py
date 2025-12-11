@@ -156,7 +156,7 @@ def liveness(p: Program):
     Standard backward liveness analysis.
     Returns IN, OUT, read, write lists indexed by instruction.
     """
-    succ = successors(p)
+    succ = successors(p)    #testing breakpoints
     read_list: List[Set[str]] = []
     write_list: List[Set[str]] = []
     for ins in p:
@@ -171,7 +171,7 @@ def liveness(p: Program):
     while changed:
         changed = False
         for i in reversed(range(len(p))):
-            in_old, out_old = IN[i].copy(), OUT[i].copy()
+            in_old, out_old = IN[i].copy(), OUT[i].copy()   #testing breaks
 
             # OUT[i] = union of IN[s] for successors s
             OUT[i].clear()
@@ -192,7 +192,7 @@ def build_igraph(p: Program, IN, OUT, read_list, write_list):
     Construct the interference graph from liveness and reads/writes.
     Nodes are virtual register names and edges mean "these cannot share a color, so can't share register".
     """
-    G: Dict[str, Set[str]] = defaultdict(set)
+    G: Dict[str, Set[str]] = defaultdict(set)   #testing breaks
 
     for i, ins in enumerate(p):
         # Ensure nodes exist for anything read or written
@@ -246,7 +246,7 @@ def greedy_color(
         pick = None
 
         # Prefer removing low-degree nodes
-        for v in work:
+        for v in work:      # testing breaks
             if v in precolored:
                 continue
             if _degree(G, v) < len(pool):
@@ -346,7 +346,7 @@ def rewrite_with_spills(
 
         # Mov
         if isinstance(ins, Mov):
-            dst, src = ins.dst, ins.src
+            dst, src = ins.dst, ins.src     #testing break
 
             # Destination spilled
             if isinstance(dst, Reg) and is_vreg(dst) and dst.name in spills:
